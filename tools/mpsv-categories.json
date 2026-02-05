@@ -1,0 +1,40 @@
+{
+  "max_last_offers": 200,
+  "categories": {
+    "auto": {
+      "label": "Auto",
+      "isco_prefixes": ["72311"],
+      "keywords": ["automechanik", "mechanik opravář motorových vozidel", "mechatronik"]
+    },
+    "agri": {
+      "label": "Agri",
+      "isco_prefixes": ["72334"],
+      "keywords": ["opravář zemědělských strojů", "mechanik zemědělské techniky", "landmaschinen"]
+    },
+    "kuchar": {
+      "label": "Kuchař",
+      "isco_prefixes": ["5120"],
+      "keywords": ["kuchař", "pomocný kuchař", "kuchar", "koch"]
+    },
+    "cisnik": {
+      "label": "Číšník / servírka",
+      "isco_prefixes": ["5131"],
+      "keywords": ["číšník", "servírka", "cisnik", "servirka", "kellner"]
+    },
+    "barman": {
+      "label": "Barman",
+      "isco_prefixes": ["5132"],
+      "keywords": ["barman", "barista", "bartender", "míchač nápojů", "michac napoju"]
+    },
+    "ridic": {
+      "label": "Řidič",
+      "isco_prefixes": ["8322", "8332", "8331", "8341"],
+      "keywords": ["řidič", "ridic", "driver", "truck", "kamion"]
+    },
+    "svarec": {
+      "label": "Svářeč (MIG/MAG)",
+      "isco_prefixes": ["7212"],
+      "keywords": ["svářeč", "svarec", "mig", "mag", "tig", "welding"]
+    }
+  }
+}

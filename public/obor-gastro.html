@@ -2,9 +2,9 @@
 <html lang="cs">
 <head>
   <meta charset="utf-8">
-  <title>Kuchař‑číšník – nabídky práce (SŠ Bor)</title>
+  <title>Kuchař – nabídky práce (SŠ Bor)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20260205-3">
   <link rel="stylesheet" href="chatbot.css">
 </head>
 <body>
@@ -14,7 +14,7 @@
         <div class="brand-mark" style="background: linear-gradient(135deg, var(--red) 0%, #ef4444 100%);">SŠ</div>
         <div>
           <p class="brand-title">Střední škola Bor</p>
-          <p class="brand-sub">Možnosti uplatnění · Kuchař‑číšník</p>
+          <p class="brand-sub" data-role="page-subtitle">Možnosti uplatnění · Kuchař</p>
         </div>
       </a>
       <nav class="nav" aria-label="Hlavní navigace">
@@ -30,10 +30,10 @@
       <div class="hero" style="background: linear-gradient(120deg, rgba(220,38,38,.95) 0%, rgba(239,68,68,.95) 100%);">
         <div class="hero-grid">
           <div>
-            <h1>Kuchař‑číšník <span class="badge">UKÁZKA</span></h1>
-            <p>Vyberte lokalitu a zobrazí se poslední nabídky. (Statická demo data bez serveru.)</p>
+            <h1 data-role="page-title">Kuchař</h1>
+            <p>Klikněte na „Aktualizovat přehled“ a zobrazí se poslední nabídky. (Statická demo data bez serveru.)</p>
             <ul class="checklist">
-              <li>Rychlý přehled: počet míst a medián mzdy</li>
+              <li>Rychlý přehled: počet míst a průměrná mzda</li>
               <li>Top zaměstnavatelé v datech</li>
               <li>Tabulka posledních nabídek</li>
             </ul>
@@ -43,16 +43,30 @@
             </div>
           </div>
           <div class="card" style="border-color: rgba(255,255,255,.25); background: rgba(255,255,255,.14); color: #fff;">
-            <h3 style="margin-top:0; color:#fff;">Filtr lokality</h3>
-            <div class="toolbar" style="margin-top:.25rem">
+            <h3 style="margin-top:0; color:#fff;">Přehled</h3>
+
+            <div class="variant-section">
+              <div class="variant-section__label">Lokalita (kraj)</div>
               <select class="select" data-role="region" data-target="gastro" aria-label="Vyberte kraj">
-                <option value="">Všechny lokality</option>
+                <option value="">Všechny kraje</option>
                 <option value="CZ032">Plzeňský kraj</option>
                 <option value="CZ041">Karlovarský kraj</option>
                 <option value="zahranici_bor">Zahraničí (do 70km od Boru)</option>
               </select>
             </div>
-            <p class="muted" style="color: rgba(255,255,255,.9); margin-top:.6rem">Tip: napište do chatu „kuchař“ a pak lokalitu.</p>
+
+            <div class="variant-section">
+              <div class="variant-section__label">Zaměření</div>
+              <select class="select" data-role="variant" data-target="gastro" aria-label="Vyberte zaměření">
+                <option value="kuchar" selected>Kuchař</option>
+                <option value="cisnik">Číšník / servírka</option>
+                <option value="barman">Barman (barmanský kurz)</option>
+              </select>
+            </div>
+            <div class="variant-section">
+              <div>Průměrná mzda: <b data-id="median">–</b> Kč</div>
+              <div style="margin-top:.6rem"><span class="tag" data-role="variant-isco">CZ‑ISCO 5120</span></div>
+            </div>
           </div>
         </div>
       </div>
@@ -61,10 +75,9 @@
     <section class="section">
       <div class="grid">
         <div class="card col-6">
-          <h3>Přehled</h3>
-          <div>Počet míst: <b data-id="count">–</b></div>
-          <div>Medián spodní mzdy: <b data-id="median">–</b> Kč</div>
-          <div style="margin-top:.6rem"><span class="tag">CZ‑ISCO 5120 / 5131</span></div>
+          <h3>Rozšířený filtr</h3>
+          <div class="muted">Mzda · moje poloha · dojezd</div>
+          <div data-role="filters-host" data-target="gastro" style="margin-top:.75rem"></div>
         </div>
         <div class="card col-6">
           <h3>Top zaměstnavatelé</h3>
@@ -75,9 +88,12 @@
 
     <section class="section">
       <div class="card">
-        <h3>Poslední nabídky</h3>
+        <div class="card-title-row">
+          <h3>Poslední nabídky</h3>
+          <div class="count-pill">Volná místa: <b data-id="count">–</b></div>
+        </div>
         <div class="table-wrap">
-          <table class="table" role="table" aria-label="Tabulka nabídek kuchař‑číšník">
+          <table class="table" role="table" data-role="offers-table" aria-label="Tabulka nabídek kuchař">
             <thead><tr>
               <th>Profese</th><th>Zaměstnavatel</th><th>Okres</th><th>Mzda</th><th>Datum</th>
             </tr></thead>
@@ -112,9 +128,9 @@
     </div>
   </div>
 
-  <script src="jobs-demo.js"></script>
+  <script src="jobs-live.js?v=20260205-4"></script>
   <script>
-    window.JobsDemo && window.JobsDemo.initOborPage('gastro');
+    window.JobsLive && window.JobsLive.initOborPage('gastro', { enableFilters: true, filtersDefaultOpen: true });
   </script>
   <script src="chatbot.js"></script>
 </body>

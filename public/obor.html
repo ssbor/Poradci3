@@ -2,7 +2,7 @@
 <html lang="cs">
 <head>
   <meta charset="utf-8">
-  <title>Opravář zemědělských strojů – nabídky práce (SŠ Bor)</title>
+  <title>Obor – nabídky práce (SŠ Bor)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="style.css?v=20260205-3">
   <link rel="stylesheet" href="chatbot.css">
@@ -11,10 +11,10 @@
   <header class="site-header">
     <div class="container header-inner">
       <a class="brand" href="index.html" aria-label="Domů">
-        <div class="brand-mark" style="background: linear-gradient(135deg, var(--green) 0%, #22c55e 100%);">SŠ</div>
+        <div class="brand-mark">SŠ</div>
         <div>
           <p class="brand-title">Střední škola Bor</p>
-          <p class="brand-sub">Možnosti uplatnění · Opravář zemědělských strojů</p>
+          <p class="brand-sub" data-role="obor-sub">Možnosti uplatnění</p>
         </div>
       </a>
       <nav class="nav" aria-label="Hlavní navigace">
@@ -27,45 +27,35 @@
 
   <main class="container">
     <section class="section">
-      <div class="hero" style="background: linear-gradient(120deg, rgba(22,163,74,.95) 0%, rgba(34,197,94,.95) 100%);">
+      <div class="hero" data-role="hero">
         <div class="hero-grid">
           <div>
-            <h1>Opravář zemědělských strojů</h1>
-            <p>Klikněte na „Aktualizovat přehled“ a zobrazí se poslední nabídky. (Statická demo data bez serveru.)</p>
+            <h1 data-role="obor-title">Obor</h1>
+            <p>Klikněte na „Aktualizovat přehled“ a zobrazí se poslední nabídky. (Statická data bez serveru.)</p>
             <ul class="checklist">
-              <li>Rychlý přehled: počet míst a průměrná mzda</li>
+              <li>Rychlý přehled: počet míst a medián mzdy</li>
               <li>Top zaměstnavatelé v datech</li>
               <li>Tabulka posledních nabídek</li>
             </ul>
             <div class="hero-actions">
-              <button class="btn btn--primary" data-role="load" data-target="agri" style="background: var(--green); border-color: var(--green);">Aktualizovat přehled</button>
+              <button class="btn btn--primary" data-role="load" type="button">Aktualizovat přehled</button>
               <a class="btn btn--ghost" href="index.html#obory">Zpět na obory</a>
             </div>
           </div>
           <div class="card" style="border-color: rgba(255,255,255,.25); background: rgba(255,255,255,.14); color: #fff;">
             <h3 style="margin-top:0; color:#fff;">Přehled</h3>
-
             <div class="variant-section">
               <div class="variant-section__label">Lokalita (kraj)</div>
-              <select class="select" data-role="region" data-target="agri" aria-label="Vyberte kraj">
+              <select class="select" data-role="region" aria-label="Vyberte kraj">
                 <option value="">Všechny kraje</option>
                 <option value="CZ032">Plzeňský kraj</option>
                 <option value="CZ041">Karlovarský kraj</option>
                 <option value="zahranici_bor">Zahraničí (do 70km od Boru)</option>
               </select>
             </div>
-
-            <div class="variant-section">
-              <div class="variant-section__label">Zaměření</div>
-              <select class="select" data-role="variant" data-target="agri" aria-label="Vyberte zaměření">
-                <option value="agri" selected>Opravář zemědělských strojů</option>
-                <option value="ridic">Řidič (B/C/T)</option>
-                <option value="svarec">Svářeč (MIG/MAG + autogen)</option>
-              </select>
-            </div>
             <div class="variant-section">
               <div>Průměrná mzda: <b data-id="median">–</b> Kč</div>
-              <div style="margin-top:.6rem"><span class="tag">CZ‑ISCO 7233 / 72334</span></div>
+              <div style="margin-top:.6rem"><span class="tag" data-role="obor-tag">CZ‑ISCO</span></div>
             </div>
           </div>
         </div>
@@ -77,7 +67,7 @@
         <div class="card col-6">
           <h3>Rozšířený filtr</h3>
           <div class="muted">Mzda · moje poloha · dojezd</div>
-          <div data-role="filters-host" data-target="agri" style="margin-top:.75rem"></div>
+          <div data-role="filters-host" style="margin-top:.75rem"></div>
         </div>
         <div class="card col-6">
           <h3>Top zaměstnavatelé</h3>
@@ -93,14 +83,14 @@
           <div class="count-pill">Volná místa: <b data-id="count">–</b></div>
         </div>
         <div class="table-wrap">
-          <table class="table" role="table" aria-label="Tabulka nabídek opravář ZS">
+          <table class="table" role="table" aria-label="Tabulka nabídek">
             <thead><tr>
               <th>Profese</th><th>Zaměstnavatel</th><th>Okres</th><th>Mzda</th><th>Datum</th>
             </tr></thead>
             <tbody data-id="tbl"></tbody>
           </table>
         </div>
-        <p class="muted" style="margin-top:.75rem">Zdroj: Otevřená data MPSV / ÚP ČR (simulace bez serveru)</p>
+        <p class="muted" style="margin-top:.75rem">Zdroj: Otevřená data MPSV / ÚP ČR</p>
       </div>
     </section>
 
@@ -108,9 +98,9 @@
       <div class="footer-grid">
         <div>
           <strong>SŠ Bor – poradci</strong>
-          <div class="muted">Stránka oboru pro přehled uplatnění.</div>
+          <div class="muted">Univerzální stránka oboru.</div>
         </div>
-        <div class="muted">Chcete přidat „Kurzy“ nebo „Praxe“? Napište a doplním.</div>
+        <div class="muted">Chcete přidat další profese? Stačí doplnit konfiguraci kategorií.</div>
       </div>
     </footer>
   </main>
@@ -129,9 +119,7 @@
   </div>
 
   <script src="jobs-live.js?v=20260205-4"></script>
-  <script>
-    window.JobsLive && window.JobsLive.initOborPage('agri', { enableFilters: true, filtersDefaultOpen: true });
-  </script>
+  <script src="obor-page.js"></script>
   <script src="chatbot.js"></script>
 </body>
 </html>

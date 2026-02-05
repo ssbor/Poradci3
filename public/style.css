@@ -159,6 +159,71 @@ a:hover{ text-decoration: underline; }
   padding: 1rem;
   box-shadow: var(--shadow-soft);
 }
+.card-title-row{
+  display:flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .75rem;
+  flex-wrap: wrap;
+}
+.count-pill{
+  display:inline-flex;
+  align-items: baseline;
+  gap: .35rem;
+  padding: .2rem .6rem;
+  border-radius: 999px;
+  background: rgba(14,26,43,.08);
+  color: rgba(14,26,43,.85);
+  border: 1px solid rgba(14,26,43,.12);
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.pager{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: .75rem;
+  flex-wrap: wrap;
+  margin: .5rem 0 .85rem;
+}
+.pager__left{
+  display:flex;
+  align-items:center;
+  gap: .5rem;
+}
+.pager__right{
+  display:flex;
+  align-items:center;
+  gap: .5rem;
+}
+.pager__info{
+  color: var(--muted);
+  font-weight: 750;
+}
+.pager__label{
+  color: var(--muted);
+  font-weight: 750;
+}
+
+/* Pager select: add a visible dropdown arrow (native arrow is hidden by appearance:none) */
+div[data-role="pager"][data-pos="top"] select[data-role="page-size"]{
+  padding-right: 2.15rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.25 6 6.25 11 1.25' fill='none' stroke='%2364718a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right .85rem center;
+  background-size: 12px 8px;
+}
+
+/* Hero selects (Lokalita + Zaměření): show arrow indicator */
+.hero .card .variant-section select.select[data-role="region"],
+.hero .card .variant-section select.select[data-role="variant"]{
+  padding-right: 2.15rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.25 6 6.25 11 1.25' fill='none' stroke='%2364718a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right .85rem center;
+  background-size: 12px 8px;
+}
 .card h3{ margin: 0 0 .5rem 0; }
 .card p{ margin: .35rem 0 0 0; color: var(--muted); }
 
@@ -193,6 +258,165 @@ a:hover{ text-decoration: underline; }
   padding:10px 12px;
   border-radius:12px;
   font-weight:650;
+}
+
+/* Variant selector (Zaměření) inside hero right card */
+.variant-section{
+  margin-top: .65rem;
+  padding: .65rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.16);
+  background: rgba(255,255,255,.08);
+}
+.variant-section__label{
+  color: rgba(255,255,255,.92);
+  font-weight: 850;
+  font-size: .78rem;
+  letter-spacing: .25px;
+  margin-bottom: .4rem;
+}
+.hero .card .variant-section .select{
+  width: 100%;
+}
+
+/* Inputs (used by jobs-live filters) */
+.input{
+  appearance:none;
+  background:#fff;
+  border:1px solid var(--line);
+  color:var(--text);
+  padding:10px 12px;
+  border-radius:12px;
+  font-weight:650;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.65);
+}
+.input::placeholder{ color: rgba(100,113,138,.9); font-weight: 600; }
+.input:focus{ outline: none; border-color: rgba(19,102,214,.45); box-shadow: 0 0 0 3px rgba(19,102,214,.15); }
+
+/* Unit selector (km/min) inside expanded filters */
+[data-role="live-filters"] select.select.select--unit{
+  min-width: 74px;
+  padding-right: 2.05rem;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.25 6 6.25 11 1.25' fill='none' stroke='%2364718a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right .75rem center;
+  background-size: 12px 8px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.65);
+}
+[data-role="live-filters"] select.select.select--unit:hover{
+  border-color: rgba(19,102,214,.25);
+}
+[data-role="live-filters"] select.select.select--unit:focus{
+  outline: none;
+  border-color: rgba(19,102,214,.45);
+  box-shadow: 0 0 0 3px rgba(19,102,214,.12);
+}
+
+/* Form fields */
+.field{ display:flex; flex-direction:column; gap:.35rem; }
+.field__label{ font-size: .82rem; color: rgba(64,80,107,.92); font-weight: 800; letter-spacing: .2px; }
+.field__row{ display:flex; gap:.45rem; align-items:center; }
+.field__row .input{ flex: 1 1 auto; }
+
+/* Live filters panel (jobs-live.js injects this) */
+[data-role="live-filters"]{
+  margin-top: .85rem;
+}
+[data-role="live-filters"] .toolbar{ margin-top: 0; }
+
+.filters-header{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+}
+
+.filters-toggle{
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .65rem;
+}
+
+.filters-toggle::after{
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  opacity: .85;
+  transition: transform .18s ease;
+}
+
+.filters-toggle.is-open::after{
+  transform: rotate(45deg);
+}
+
+.filters-panel{ margin-top: .8rem; }
+
+.filters-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .75rem;
+  align-items:end;
+}
+.field--span2{ grid-column: 1 / -1; }
+.field--actions{ justify-self: start; }
+@media (max-width: 900px){
+  .filters-grid{ grid-template-columns: 1fr; }
+  .field--span2{ grid-column: auto; }
+}
+
+/* Better contrast when filters live inside the hero glass card */
+.hero .card [data-role="live-filters"]{
+  padding: .9rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.20);
+  background: rgba(255,255,255,.08);
+  box-shadow: 0 10px 24px rgba(0,0,0,.10);
+}
+
+.hero .card .filters-toggle.btn--ghost{
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.20);
+  color: rgba(255,255,255,.96);
+}
+.hero .card .filters-toggle.btn--ghost:hover{
+  background: rgba(255,255,255,.16);
+}
+
+.hero .card .filters-grid{ grid-template-columns: 1fr; gap: .7rem; }
+.hero .card .field--actions{ justify-self: stretch; }
+
+.hero .card .field__label{ color: rgba(255,255,255,.92); }
+.hero .card .input,
+.hero .card .select{
+  background: rgba(255,255,255,.92);
+  border-color: rgba(255,255,255,.25);
+}
+.hero .card .field__label{ font-weight: 750; font-size: .78rem; letter-spacing: .25px; }
+.hero .card .input,
+.hero .card .select{ box-shadow: none; }
+.hero .card .field__row{ gap: .5rem; }
+.hero .card .select{ min-width: 80px; }
+
+.hero .card [data-role="live-filters"] .btn{
+  box-shadow: none;
+  padding: 10px 12px;
+}
+.hero .card [data-role="live-filters"] .btn--primary{
+  box-shadow: 0 10px 18px rgba(0,0,0,.16);
+}
+
+.hero .card .field--actions .field__row{ width: 100%; }
+.hero .card .field--actions .btn{ flex: 1 1 0; }
+
+.hero .card .input:focus,
+.hero .card .select:focus{
+  box-shadow: 0 0 0 3px rgba(255,255,255,.18);
 }
 
 .table-wrap{ overflow:auto; border-radius: 12px; border: 1px solid var(--line); }
