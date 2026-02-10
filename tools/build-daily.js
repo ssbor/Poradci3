@@ -14,9 +14,11 @@ const { parser } = parserPkg;
 const { pick } = pickPkg;
 const { streamArray } = streamArrayPkg;
 
-const SOURCE_URL =
+const INPUT_URL =
   process.env.MPSV_URL ||
-  "https://data.mpsv.cz/od/soubory/volna-mista/volna-mista.json";
+  "https://data.mpsv.cz/web/data/volna-mista-za-celou-cr";
+
+let SOURCE_URL = INPUT_URL;
 
 const OUTDIR = "./public/data";
 const DEFAULT_MAX_LAST_OFFERS = 200;
@@ -150,6 +152,40 @@ async function fetchJsonWithCache(url, cacheFilePath, { maxAgeMs = 1000 * 60 * 6
   ensureDir(CISELNIKY_DIR);
   fs.writeFileSync(cacheFilePath, JSON.stringify(js));
   return js;
+}
+
+async function resolveDatasetUrl(url) {
+  const u = String(url || "").trim();
+  if (!u) throw new Error("Missing MPSV_URL");
+
+  // Direct file URLs (or gz) can be used as-is.
+  if (/\.(json|jsonld|gz)(\?|#|$)/i.test(u)) return u;
+
+  // Dataset landing pages (like /web/data/...) should be resolved to actual file links.
+  // We pick the standard JSON export if present, otherwise JSON-LD.
+  const res = await fetchWithRetry(u, { tries: 4, timeoutMs: 180000 });
+  const html = await res.text();
+
+  const candidates = [];
+  const re = /https:\/\/data\.mpsv\.cz\/od\/soubory\/[^\s"']+?\.(json|jsonld)(?:\?[^\s"']*)?/gi;
+  let m;
+  while ((m = re.exec(html))) {
+    candidates.push(m[0]);
+  }
+
+  // Prefer the known VPM exports if present.
+  const preferredJson = candidates.find((x) => /\/od\/soubory\/volna-mista\/volna-mista\.json(\?|$)/i.test(x));
+  if (preferredJson) return preferredJson;
+  const preferredJsonLd = candidates.find((x) => /\/od\/soubory\/volna-mista\/volna-mista\.jsonld(\?|$)/i.test(x));
+  if (preferredJsonLd) return preferredJsonLd;
+
+  // Fallback: any JSON file found on the page.
+  const anyJson = candidates.find((x) => /\.json(\?|$)/i.test(x));
+  if (anyJson) return anyJson;
+  const anyJsonLd = candidates.find((x) => /\.jsonld(\?|$)/i.test(x));
+  if (anyJsonLd) return anyJsonLd;
+
+  throw new Error("Could not resolve dataset page to a downloadable JSON URL: " + u);
 }
 
 async function loadCiselnikMaps() {
@@ -397,6 +433,7 @@ async function main() {
   console.log("🗺️ Načítám číselníky (kraje/okresy/obce)…");
   const maps = await loadCiselnikMaps();
 
+  SOURCE_URL = await resolveDatasetUrl(INPUT_URL);
   console.log("⬇️ Stahuji:", SOURCE_URL);
   const resp = await fetchWithRetry(SOURCE_URL, { tries: 4, timeoutMs: 180000 });
   if (!resp.ok || !resp.body) {
@@ -418,6 +455,7 @@ async function main() {
   const wages = Object.fromEntries(tags.map(t => [t, []]));
   const employers = Object.fromEntries(tags.map(t => [t, {}]));
   const sample = [];
+  const rawSample = [];
 
   function ingest(norm) {
     const cat = classifyByRules({
@@ -435,6 +473,7 @@ async function main() {
 
   async function* sink(stream) {
     for await (const { value: rec } of stream) {
+      if (rawSample.length < 1) rawSample.push(rec);
       const norm = isJsonLd ? normalizeFromJsonLd(rec) : normalizeFromMpsvJson(rec, maps);
       if (sample.length < 50) sample.push(norm); // diagnostika
       ingest(norm);
@@ -451,6 +490,7 @@ async function main() {
 
   ensureOutDir();
   fs.writeFileSync(`${OUTDIR}/_sample.json`, JSON.stringify(sample, null, 2));
+  fs.writeFileSync(`${OUTDIR}/_raw_sample.json`, JSON.stringify(rawSample, null, 2));
 
   // Manifest of available categories for the frontend (index / generic obor page)
   const categoriesManifest = {

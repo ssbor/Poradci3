@@ -44,9 +44,80 @@
     return Math.round(sum / arr.length);
   }
 
+  const HOURLY_WAGE_MAX = 1000; // heuristic: values under this are treated as Kč/h
+  const HOURS_PER_MONTH = (40 * 52) / 12; // ≈ 173.33 (40h/week)
+
+  function isFiniteNumber(n) {
+    return typeof n === 'number' && Number.isFinite(n) && !Number.isNaN(n);
+  }
+
+  function looksHourlyWage(n) {
+    return isFiniteNumber(n) && n > 0 && n <= HOURLY_WAGE_MAX;
+  }
+
+  function toMonthlyWage(n) {
+    if (!isFiniteNumber(n)) return null;
+    return looksHourlyWage(n) ? Math.round(n * HOURS_PER_MONTH) : n;
+  }
+
+  function offerWageIsHourly(offer) {
+    const od = isFiniteNumber(offer?.mzda_od) ? offer.mzda_od : null;
+    const doo = isFiniteNumber(offer?.mzda_do) ? offer.mzda_do : null;
+    return looksHourlyWage(od) || looksHourlyWage(doo);
+  }
+
+  function offerMonthlyWagePoint(offer) {
+    const od = isFiniteNumber(offer?.mzda_od) ? offer.mzda_od : null;
+    const doo = isFiniteNumber(offer?.mzda_do) ? offer.mzda_do : null;
+
+    const odM = od != null ? toMonthlyWage(od) : null;
+    const doM = doo != null ? toMonthlyWage(doo) : null;
+
+    if (odM != null && doM != null) return Math.round((odM + doM) / 2);
+    return odM ?? doM ?? null;
+  }
+
+  function offerWageText(offer) {
+    const od = isFiniteNumber(offer?.mzda_od) ? offer.mzda_od : null;
+    const doo = isFiniteNumber(offer?.mzda_do) ? offer.mzda_do : null;
+
+    const range =
+      (od != null ? fmtInt(od) : '') + (doo != null ? '–' + fmtInt(doo) : '');
+    if (!range) return '';
+    return offerWageIsHourly(offer) ? `${range} Kč/h` : range;
+  }
+
   function fmtInt(n) {
     if (n == null || Number.isNaN(n)) return '–';
     return Number(n).toLocaleString('cs-CZ');
+  }
+
+  function formatDateCZ(raw) {
+    if (raw == null) return '–';
+    const s = String(raw).trim();
+    if (!s) return '–';
+
+    // Prefer stable extraction from ISO-like strings (avoid timezone shifts)
+    const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) {
+      const y = Number(iso[1]);
+      const m = Number(iso[2]);
+      const d = Number(iso[3]);
+      if (y > 1900 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+        return `${d}.${m}.${y}`;
+      }
+    }
+
+    const ts = Date.parse(s);
+    if (Number.isFinite(ts)) {
+      const dt = new Date(ts);
+      const d = dt.getUTCDate();
+      const m = dt.getUTCMonth() + 1;
+      const y = dt.getUTCFullYear();
+      if (y > 1900) return `${d}.${m}.${y}`;
+    }
+
+    return s;
   }
 
   function debounce(fn, ms) {
@@ -101,16 +172,45 @@
     return new Promise((r) => setTimeout(r, ms));
   }
 
+  // Bias geocoding results toward the school's region to reduce ambiguity
+  // (e.g. multiple places with the same name).
+  const BOR_BIAS = { lat: 49.7129, lon: 12.7756 };
+
+  function pickClosestResult(results, bias) {
+    if (!Array.isArray(results) || !results.length) return null;
+    const biasPoint = bias && Number.isFinite(bias.lat) && Number.isFinite(bias.lon) ? bias : null;
+
+    let best = null;
+    let bestScore = Infinity;
+    for (const r of results) {
+      const lat = Number(r?.lat);
+      const lon = Number(r?.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+      const score = biasPoint ? haversineKm(biasPoint, { lat, lon }) : 0;
+      if (score < bestScore) {
+        bestScore = score;
+        best = { lat, lon };
+      }
+    }
+    return best;
+  }
+
   async function geocodeOnce(query) {
-    const url =
-      'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' +
-      encodeURIComponent(query);
-    const res = await fetch(url);
+    const q = String(query || '').trim();
+    if (!q) return null;
+
+    const isCzHint = /\bCzechia\b|\bCzech Republic\b|\bČesko\b/i.test(q);
+    const base = new URL('https://nominatim.openstreetmap.org/search');
+    base.searchParams.set('format', 'json');
+    base.searchParams.set('limit', '5');
+    base.searchParams.set('q', q);
+    if (isCzHint) base.searchParams.set('countrycodes', 'cz');
+    base.searchParams.set('accept-language', 'cs');
+
+    const res = await fetch(base.toString());
     if (!res.ok) throw new Error('Geocode HTTP ' + res.status);
     const js = await res.json();
-    const first = js && js[0];
-    if (!first) return null;
-    return { lat: Number(first.lat), lon: Number(first.lon) };
+    return pickClosestResult(js, BOR_BIAS);
   }
 
   function ensureAllRegionsInSelect(tag) {
@@ -192,13 +292,9 @@
           </div>
 
           <div class="field">
-            <label class="field__label" for="limit-${tag}">Do (km/min)</label>
+            <label class="field__label" for="limit-${tag}">Do (km)</label>
             <div class="field__row">
               <input id="limit-${tag}" class="input" data-role="limit" data-target="${tag}" inputmode="numeric" placeholder="např. 30" />
-                <select class="select select--unit" data-role="limit-unit" data-target="${tag}" aria-label="Jednotka (km/min)">
-                <option value="km" selected>km</option>
-                <option value="min">min</option>
-              </select>
             </div>
           </div>
 
@@ -237,10 +333,9 @@
     const originEl = document.querySelector(`input[data-role=origin][data-target="${tag}"]`);
     const minwEl = document.querySelector(`input[data-role=minw][data-target="${tag}"]`);
     const limitEl = document.querySelector(`input[data-role=limit][data-target="${tag}"]`);
-    const limitUnitEl = document.querySelector(`select[data-role=limit-unit][data-target="${tag}"]`);
     const statusEl = document.querySelector(`div[data-role=status][data-target="${tag}"]`);
 
-    return { regionSel, originEl, minwEl, limitEl, limitUnitEl, statusEl };
+    return { regionSel, originEl, minwEl, limitEl, statusEl };
   }
 
   function normalizeRegionValue(v) {
@@ -266,15 +361,6 @@
     if (!cleaned) return null;
     const n = Number(cleaned);
     return Number.isFinite(n) ? n : null;
-  }
-
-  function estimateMinutesFromKm(km) {
-    // Simple estimate (not a real routing engine)
-    if (!Number.isFinite(km)) return null;
-    const speedKmh = 55;
-    const base = (km / speedKmh) * 60;
-    const overhead = 6;
-    return Math.max(1, Math.round(base + overhead));
   }
 
   function ensurePagerUI(tag) {
@@ -354,7 +440,7 @@
   }
 
   function render(tag, state) {
-    const { regionSel, originEl, minwEl, limitEl, limitUnitEl, statusEl } = getInputs(tag);
+    const { regionSel, originEl, minwEl, limitEl, statusEl } = getInputs(tag);
 
     ensurePagerUI(tag);
 
@@ -362,8 +448,6 @@
     const originText = String(originEl?.value || state.originText || '').trim();
     const minWage = parseIntOrNull(minwEl?.value);
     const limitVal = parseIntOrNull(limitEl?.value);
-    const unit = String(limitUnitEl?.value || state.limitUnit || 'km');
-    state.limitUnit = unit;
     state.originText = originText;
 
     const wantsLimit = limitVal != null;
@@ -381,19 +465,34 @@
     });
 
     if (minWage != null) {
-      rows = rows.filter((r) => typeof r.mzda_od === 'number' && r.mzda_od >= minWage);
+      rows = rows.filter((r) => {
+        const w = offerMonthlyWagePoint(r);
+        return isFiniteNumber(w) && w >= minWage;
+      });
     }
 
-    // km/min limit filter (requires origin geocoded)
+    // km limit filter (requires origin geocoded)
     if (canLimit) {
-      rows = rows.filter((r) => {
-        const key = state.offerKey(r);
-        const km = state.distances.get(key);
-        if (typeof km !== 'number') return false;
-        if (unit === 'km') return km <= limitVal;
-        const mins = estimateMinutesFromKm(km);
-        return typeof mins === 'number' && mins <= limitVal;
-      });
+      const hasAnyDistance = state.distances.size > 0;
+
+      // If we haven't computed any distances yet, don't hide everything.
+      // We'll start filtering as soon as we know at least some distances.
+      if (!hasAnyDistance) {
+        if (statusEl) {
+          statusEl.textContent = state.isComputingDistances
+            ? 'Počítám dojezd…'
+            : 'Dojezd se nepodařilo spočítat.';
+        }
+      } else {
+        if (statusEl) statusEl.textContent = '';
+
+        rows = rows.filter((r) => {
+          const key = state.offerKey(r);
+          const km = state.distances.get(key);
+          if (typeof km !== 'number') return false;
+          return km <= limitVal;
+        });
+      }
     }
 
     rows.sort((a, b) => String(b.datum || '').localeCompare(String(a.datum || '')));
@@ -409,8 +508,8 @@
     const pageRows = pageSizeRaw === 'all' ? rows : rows.slice(from, to);
 
     const wages = rows
-      .map((r) => r.mzda_od)
-      .filter((v) => typeof v === 'number' && !Number.isNaN(v));
+      .map((r) => offerMonthlyWagePoint(r))
+      .filter((v) => isFiniteNumber(v));
 
     const countEl = pickEl(tag, `[data-id="count-$t"]`) || pickEl(tag, `[data-id="count"]`);
     const medianEl = pickEl(tag, `[data-id="median-$t"]`) || pickEl(tag, `[data-id="median"]`);
@@ -420,8 +519,7 @@
     if (countEl) countEl.textContent = rows.length;
     if (medianEl) medianEl.textContent = fmtInt(average(wages));
 
-    // Intentionally do not write a verbose status line under the expanded filters.
-    // (statusEl is reserved for loading/errors and explicit user actions)
+    // statusEl is used for loading/errors and for concise hints about distance filtering.
 
     if (topEl) {
       const cnt = {};
@@ -451,26 +549,20 @@
       tb.innerHTML = '';
       pageRows.forEach((r) => {
         const tr = document.createElement('tr');
-        const mzda =
-          (r.mzda_od ? fmtInt(r.mzda_od) : '') + (r.mzda_do ? '–' + fmtInt(r.mzda_do) : '');
-        const key = state.offerKey(r);
-        const km = state.distances.get(key);
-        const kmText = typeof km === 'number' ? km.toFixed(0) : '–';
-        const mins = state.userLoc ? estimateMinutesFromKm(km) : null;
-        const minsText = typeof mins === 'number' ? String(mins) : '–';
-        const extraCell = state.userLoc
-          ? unit === 'min'
-            ? `<td>${minsText}</td>`
-            : `<td>${kmText}</td>`
-          : '';
+        const mzda = offerWageText(r);
+
+        const placeText = r.obec
+          ? String(r.obec)
+          : r.okres
+            ? `${r.okres} (okres)`
+            : String(r.lokalita || '');
 
         tr.innerHTML =
           `<td>${escapeHtml(r.profese || '')}</td>` +
           `<td>${escapeHtml(r.zamestnavatel || '')}</td>` +
-          `<td>${escapeHtml(r.okres || r.lokalita || '')}</td>` +
-          (state.userLoc
-            ? `<td>${escapeHtml(mzda || '')}</td>${extraCell}<td>${escapeHtml(r.datum || '')}</td>`
-            : `<td>${escapeHtml(mzda || '')}</td><td>${escapeHtml(r.datum || '')}</td>`);
+          `<td>${escapeHtml(placeText || '')}</td>` +
+          `<td>${escapeHtml(mzda || '')}</td>` +
+          `<td class="td-date"><span class="date">${escapeHtml(formatDateCZ(r.datum))}</span></td>`;
 
         tb.appendChild(tr);
       });
@@ -503,27 +595,7 @@
 
     // Note: no running status summary.
 
-    // Toggle distance column headers if needed
-    const thead = document.querySelector('table thead tr');
-    if (thead) {
-      const hasLimit = !!thead.querySelector('[data-role="th-limit"]');
-      if (state.userLoc) {
-        if (!hasLimit) {
-          const th = document.createElement('th');
-          th.setAttribute('data-role', 'th-limit');
-          th.textContent = state.limitUnit === 'min' ? 'Min' : 'Km';
-          const ths = thead.querySelectorAll('th');
-          const before = ths.length >= 1 ? ths[ths.length - 1] : null;
-          if (before) thead.insertBefore(th, before);
-          else thead.appendChild(th);
-        } else {
-          const th = thead.querySelector('[data-role="th-limit"]');
-          if (th) th.textContent = state.limitUnit === 'min' ? 'Min' : 'Km';
-        }
-      } else {
-        thead.querySelector('[data-role="th-limit"]')?.remove();
-      }
-    }
+    // Distance is filter-only (no Km column in table).
   }
 
   function bestGeocodeQueryForOffer(o) {
@@ -532,6 +604,17 @@
     const obec = String(o?.obec || '').trim();
     const okres = String(o?.okres || '').trim();
     const lokalita = String(o?.lokalita || '').trim();
+
+    const hasZip = /\b\d{5}\b/.test(lokalita);
+    const looksLikeAddress = hasZip || /\d/.test(lokalita);
+
+    // If we have a usable address/zip, include it for better precision.
+    // (Kept behind a heuristic so we don't explode unique geocode queries.)
+    if (lokalita && looksLikeAddress) {
+      if (obec && krajName) return `${lokalita}, ${obec}, ${krajName}, Czechia`;
+      if (obec) return `${lokalita}, ${obec}, Czechia`;
+      if (okres && krajName) return `${lokalita}, ${okres}, ${krajName}, Czechia`;
+    }
 
     // Prefer: obec + kraj (stable and geocodable)
     if (obec && krajName) return `${obec}, ${krajName}, Czechia`;
@@ -546,20 +629,48 @@
 
   async function computeDistances(tag, state) {
     if (!state.userLoc) return;
+    if (state.isComputingDistances) return;
+    state.isComputingDistances = true;
 
     const cache = state.geoCache;
-    const uniqueQueries = [];
+    const { statusEl } = getInputs(tag);
 
+    const startedAt = Date.now();
+    if (statusEl) statusEl.textContent = '';
+
+    try {
+
+    const applyDistancesFromCache = () => {
+      for (const o of state.offers) {
+        const key = state.offerKey(o);
+        const q = bestGeocodeQueryForOffer(o);
+        const coords = q ? cache[q] : null;
+        if (coords && typeof coords === 'object') {
+          state.distances.set(key, haversineKm(state.userLoc, coords));
+        }
+      }
+    };
+
+      // First, apply whatever is already cached.
+      applyDistancesFromCache();
+      render(tag, state);
+
+    const queryCounts = new Map();
     for (const o of state.offers) {
       const q = bestGeocodeQueryForOffer(o);
       if (!q) continue;
-      if (Object.prototype.hasOwnProperty.call(cache, q)) continue;
-      uniqueQueries.push(q);
+      queryCounts.set(q, (queryCounts.get(q) || 0) + 1);
     }
 
-    // polite throttling (and avoid too many requests)
-    const MAX_LOOKUPS = 60;
-    const todo = uniqueQueries.slice(0, MAX_LOOKUPS);
+    const uniqueQueries = Array.from(queryCounts.keys()).filter(
+      (q) => !Object.prototype.hasOwnProperty.call(cache, q)
+    );
+
+      // polite throttling (and avoid too many requests)
+      const MAX_LOOKUPS = 30;
+    const todo = uniqueQueries
+      .sort((a, b) => (queryCounts.get(b) || 0) - (queryCounts.get(a) || 0))
+      .slice(0, MAX_LOOKUPS);
 
     for (let i = 0; i < todo.length; i++) {
       const q = todo[i];
@@ -577,17 +688,25 @@
         cache[q] = null;
         saveGeoCache(cache);
       }
-      await sleep(900);
+
+      // Update distances incrementally so the km filter works immediately.
+      applyDistancesFromCache();
       render(tag, state);
+
+      // Keep it reasonably fast while still being polite.
+      await sleep(650);
     }
 
-    // now compute distances for offers with cached coords
-    for (const o of state.offers) {
-      const key = state.offerKey(o);
-      const q = bestGeocodeQueryForOffer(o);
-      const coords = q ? cache[q] : null;
-      if (coords && typeof coords === 'object') {
-        state.distances.set(key, haversineKm(state.userLoc, coords));
+      applyDistancesFromCache();
+      render(tag, state);
+    } finally {
+      state.isComputingDistances = false;
+
+      // If we're still showing the generic computing hint for a while, clear it.
+      // (Render will set it again if needed.)
+      if (statusEl && String(statusEl.textContent || '').trim() === 'Počítám dojezd…') {
+        // Avoid immediate flicker for ultra-fast cache hits.
+        if (Date.now() - startedAt > 800) statusEl.textContent = '';
       }
     }
   }
@@ -610,9 +729,9 @@
       pageSize: 30,
       userLoc: null,
       originText: '',
-      limitUnit: 'km',
       originResolved: '',
       distances: new Map(),
+      isComputingDistances: false,
       geoCache: loadGeoCache(),
       offerKey: (o) =>
         [o.cz_isco || '', o.zamestnavatel || '', o.okres || o.lokalita || '', o.datum || ''].join('|')
@@ -716,7 +835,7 @@
         state.page = 1;
         if (state.userLoc) {
           state.distances.clear();
-          await computeDistances(tag, state);
+          computeDistances(tag, state).catch(() => {});
         }
         render(tag, state);
         applyVariantPageMeta(tag, state.dataTag);
@@ -727,7 +846,7 @@
     });
 
     // Wire UI
-    const { regionSel, originEl, minwEl, limitEl, limitUnitEl } = getInputs(tag);
+    const { regionSel, originEl, minwEl, limitEl } = getInputs(tag);
 
     // Pager UI events
     ensurePagerUI(tag);
@@ -809,19 +928,10 @@
       setFiltersOpen(!currentlyOpen);
     });
 
-    const applyLimitUnitUX = () => {
-      const unit = String(limitUnitEl?.value || state.limitUnit || 'km');
-      state.limitUnit = unit;
-      const label = document.querySelector(`label[for="limit-${tag}"]`);
-        if (label) label.textContent = 'Do (km/min)';
-      if (limitEl) limitEl.placeholder = unit === 'min' ? 'např. 45' : 'např. 30';
-    };
-
     const resolveOriginIfNeeded = async () => {
       const val = String(originEl?.value || '').trim();
       const { statusEl } = getInputs(tag);
       if (!val) {
-        if (statusEl) statusEl.textContent = 'Vyplňte „Moje poloha“ (např. Plzeň).';
         return false;
       }
 
@@ -829,7 +939,6 @@
       if (state.userLoc && state.originResolved === val) return true;
 
       try {
-        if (statusEl) statusEl.textContent = 'Zjišťuji polohu: ' + val + '…';
         const coords = await geocodeOnce(val + ', Czechia');
         if (!coords) {
           if (statusEl) statusEl.textContent = 'Nepodařilo se najít polohu pro: ' + val;
@@ -839,9 +948,8 @@
         state.originText = val;
         state.originResolved = val;
         state.distances.clear();
-        await computeDistances(tag, state);
+        computeDistances(tag, state).catch(() => {});
         render(tag, state);
-        if (statusEl) statusEl.textContent = '';
         return true;
       } catch (e) {
         if (statusEl) statusEl.textContent = 'Nepodařilo se geokódovat: ' + String(e);
@@ -853,15 +961,36 @@
       state.page = 1;
       render(tag, state);
     }, 120);
+
+    const autoResolveOriginAndRender = debounce(async () => {
+      const originVal = String(originEl?.value || '').trim();
+      const limitNow = parseIntOrNull(limitEl?.value);
+
+      state.originText = originVal;
+
+      // Only geocode automatically when the user actually asks for a radius.
+      if (originVal && limitNow != null) {
+        // Avoid filtering with stale origin while typing a new one.
+        if (state.userLoc && state.originResolved && originVal !== state.originResolved) {
+          state.userLoc = null;
+          state.distances.clear();
+          render(tag, state);
+        }
+        await resolveOriginIfNeeded();
+      } else {
+        render(tag, state);
+      }
+    }, 450);
     regionSel?.addEventListener('change', rerender);
     minwEl?.addEventListener('input', rerender);
-    limitEl?.addEventListener('input', rerender);
-    limitUnitEl?.addEventListener('change', () => {
-      applyLimitUnitUX();
-      render(tag, state);
+    originEl?.addEventListener('input', () => {
+      state.page = 1;
+      autoResolveOriginAndRender();
     });
-
-    applyLimitUnitUX();
+    limitEl?.addEventListener('input', () => {
+      state.page = 1;
+      autoResolveOriginAndRender();
+    });
 
     // Explicit search button (requested UX)
     document
@@ -909,7 +1038,7 @@
         // If user already enabled location, recompute distances for the new list.
         if (state.userLoc) {
           state.distances.clear();
-          await computeDistances(tag, state);
+          computeDistances(tag, state).catch(() => {});
         }
         render(tag, state);
       });
@@ -920,13 +1049,12 @@
         if (originEl) originEl.value = '';
         if (minwEl) minwEl.value = '';
         if (limitEl) limitEl.value = '';
-        if (limitUnitEl) limitUnitEl.value = 'km';
         state.distances.clear();
         state.userLoc = null;
         state.originText = '';
         state.originResolved = '';
-        state.limitUnit = 'km';
-        applyLimitUnitUX();
+        const { statusEl } = getInputs(tag);
+        if (statusEl) statusEl.textContent = '';
         render(tag, state);
       });
 

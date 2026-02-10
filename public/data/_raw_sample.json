@@ -1,0 +1,153 @@
+[
+  {
+    "portalId": 67222349,
+    "id": "VolneMisto/67222349",
+    "referencniCislo": "32460660740",
+    "azylant": false,
+    "cizinecMimoEu": true,
+    "datumVlozeni": "2026-01-19T00:00:00.000Z",
+    "datumZmeny": "2026-02-08T23:04:56.000Z",
+    "mesicniMzdaDo": null,
+    "mesicniMzdaOd": 22400,
+    "modraKarta": false,
+    "pocetHodinTydne": null,
+    "pocetMist": 1,
+    "pozadovanaProfese": {
+      "cs": "POMOCNÁ SÍLA V KUCHYNI M/Ž"
+    },
+    "statniSpravaSamosprava": false,
+    "terminUkonceniPracovnihoPomeru": null,
+    "terminZahajeniPracovnihoPomeru": "2026-01-20",
+    "souhlasAgenturyAgentura": false,
+    "souhlasAgenturyUzivatel": false,
+    "upresnujiciInformace": {
+      "cs": "Pozice je vhodná i pro cizince na zaměstnanecké karty."
+    },
+    "urlAdresa": null,
+    "zamestnaneckaKarta": true,
+    "expirace": null,
+    "minPozadovaneVzdelani": {
+      "id": "VzdelaniDetailniKategorie/bezVzdel"
+    },
+    "smennost": {
+      "id": "Smennost/jednoSm"
+    },
+    "typMzdy": {
+      "id": "TypMzdy/mesic"
+    },
+    "zverejnovat": {
+      "id": "ZverejnovatVpm/ano"
+    },
+    "mistoVykonuPrace": {
+      "typMistaVykonuPrace": {
+        "id": "TypMistaVykonuPrace/adrprov"
+      },
+      "obec": null,
+      "okresy": null,
+      "adresaText": null,
+      "pracoviste": [
+        {
+          "email": null,
+          "nazev": "Hotel U Valdické Brány s.r.o.",
+          "telefon": null,
+          "adresa": {
+            "cisloDomovni": 21,
+            "cisloOrientacni": null,
+            "dodatekAdresy": null,
+            "kodAdresnihoMista": 17523877,
+            "psc": "50601",
+            "typCislaDomovniho": {
+              "id": "TypStavebnihoObjektu/1"
+            },
+            "kraj": {
+              "id": "Kraj/86"
+            },
+            "okres": {
+              "id": "Okres/3604"
+            },
+            "obec": {
+              "id": "Obec/572659"
+            },
+            "mestskyObvodMestskaCast": null,
+            "mestskyObvodVPraze": null,
+            "castObce": {
+              "id": "CastObce/410225"
+            },
+            "ulice": {
+              "nazev": "Havlíčkova"
+            }
+          }
+        }
+      ]
+    },
+    "zamestnavatel": {
+      "ico": "09342184",
+      "nazev": "Hotel U Valdické Brány s.r.o."
+    },
+    "profeseCzIsco": {
+      "id": "CzIsco/94120"
+    },
+    "pracovnePravniVztahy": [
+      {
+        "id": "PracovnepravniVztah/plny"
+      }
+    ],
+    "vhodnostiPracovnihoMista": [
+      {
+        "id": "VhodnostProTypZamestnance/zdravi"
+      }
+    ],
+    "kontaktniPracoviste": {
+      "id": "KontaktniPracoviste/JCA"
+    },
+    "vyhodyVolnehoMista": null,
+    "pozadovanaDovednost": null,
+    "pozadovanaJazykovaZnalost": null,
+    "pozadovanePovolani": null,
+    "pozadovaneVzdelani": null,
+    "prvniKontaktSeZamestnavatelem": {
+      "komuSeHlasit": {
+        "email": "hotel@uvaldickebrany.cz",
+        "telefon": "602276532",
+        "jmeno": "Taneček",
+        "prijmeni": "Lukáš",
+        "titulPredJmenem": null,
+        "titulZaJmenem": null,
+        "poziceVeSpolecnosti": "Jednatel"
+      },
+      "kdeSeHlasit": {
+        "email": null,
+        "telefon": null,
+        "mistoKontaktu": "Hotel U Valdické Brány s.r.o.",
+        "adresa": {
+          "cisloDomovni": 21,
+          "cisloOrientacni": null,
+          "dodatekAdresy": null,
+          "kodAdresnihoMista": 17523877,
+          "psc": "50601",
+          "typCislaDomovniho": {
+            "id": "TypStavebnihoObjektu/1"
+          },
+          "kraj": {
+            "id": "Kraj/86"
+          },
+          "okres": {
+            "id": "Okres/3604"
+          },
+          "obec": {
+            "id": "Obec/572659"
+          },
+          "mestskyObvodMestskaCast": null,
+          "mestskyObvodVPraze": null,
+          "castObce": {
+            "id": "CastObce/410225"
+          },
+          "nazevCastiObce": null,
+          "ulice": {
+            "nazev": "Havlíčkova"
+          }
+        }
+      }
+    }
+  }
+]

@@ -423,6 +423,7 @@ div[data-role="pager"][data-pos="top"] select[data-role="page-size"]{
 .table{ width: 100%; border-collapse: collapse; min-width: 720px; background:#fff; }
 .table th, .table td{ padding:.65rem .6rem; border-bottom:1px solid var(--line); text-align:left; }
 .table th{ font-size:.92rem; color:#40506b; background: #fbfdff; }
+.table td.td-date{ white-space: nowrap; }
 
 .tag{ font-size:.82rem; background:#eaf2ff; color:#244a8e; padding:.2rem .55rem; border-radius:999px; }
 .badge{ font-size:.72rem; background:#fff; color:#124a9a; padding:.15rem .45rem; border-radius:999px; border:1px solid rgba(255,255,255,.65); }
