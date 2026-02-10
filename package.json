@@ -3,9 +3,12 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "build": "node tools/build-daily.js"
+    "build": "node tools/build-daily.js && node tools/build-obce-centroids.js"
   },
   "dependencies": {
+    "node-stream-zip": "^1.15.0",
+    "proj4": "^2.12.0",
+    "shapefile": "^0.6.6",
     "stream-json": "^1.9.1"
   }
 }

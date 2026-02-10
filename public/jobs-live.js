@@ -176,6 +176,75 @@
   // (e.g. multiple places with the same name).
   const BOR_BIAS = { lat: 49.7129, lon: 12.7756 };
 
+  // Offline municipality index (built at build-time from ČÚZK/RÚIAN) for instant km filtering.
+  let OBCE_INDEX = null;
+  let OBCE_INDEX_LOADING = null;
+
+  function normalizePlaceName(s) {
+    return String(s || '')
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/\p{Diacritic}+/gu, '')
+      .replace(/\s+/g, ' ');
+  }
+
+  async function ensureObceIndexLoaded() {
+    if (OBCE_INDEX) return OBCE_INDEX;
+    if (OBCE_INDEX_LOADING) return OBCE_INDEX_LOADING;
+    OBCE_INDEX_LOADING = (async () => {
+      try {
+        const data = await fetchJSON('data/obce_centroids.json');
+        if (data && typeof data === 'object' && data.byName) {
+          OBCE_INDEX = data;
+          return OBCE_INDEX;
+        }
+      } catch {
+        // ignore
+      }
+      OBCE_INDEX = null;
+      return null;
+    })();
+    return OBCE_INDEX_LOADING;
+  }
+
+  function pickClosestFromOptions(options, bias) {
+    if (!Array.isArray(options) || options.length === 0) return null;
+    const biasPoint = bias && Number.isFinite(bias.lat) && Number.isFinite(bias.lon) ? bias : null;
+    let best = null;
+    let bestScore = Infinity;
+    for (const opt of options) {
+      const lat = Number(opt?.lat);
+      const lon = Number(opt?.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+      const score = biasPoint ? haversineKm(biasPoint, { lat, lon }) : 0;
+      if (score < bestScore) {
+        bestScore = score;
+        best = { lat, lon };
+      }
+    }
+    return best;
+  }
+
+  async function lookupObecCoords(name, krajCode) {
+    const idx = await ensureObceIndexLoaded();
+    if (!idx) return null;
+
+    const nn = normalizePlaceName(name);
+    if (!nn) return null;
+
+    const kc = String(krajCode || '').trim();
+    if (kc && idx.byNameKraj && idx.byNameKraj[`${nn}|${kc}`]) {
+      const v = idx.byNameKraj[`${nn}|${kc}`];
+      if (v && Number.isFinite(Number(v.lat)) && Number.isFinite(Number(v.lon))) {
+        return { lat: Number(v.lat), lon: Number(v.lon) };
+      }
+    }
+
+    const options = idx.byName?.[nn];
+    return pickClosestFromOptions(options, BOR_BIAS);
+  }
+
   function pickClosestResult(results, bias) {
     if (!Array.isArray(results) || !results.length) return null;
     const biasPoint = bias && Number.isFinite(bias.lat) && Number.isFinite(bias.lon) ? bias : null;
@@ -706,6 +775,28 @@
 
     try {
 
+      // First try the offline municipality index (instant, no network, no rate-limits).
+      const idx = await ensureObceIndexLoaded();
+      if (idx) {
+        for (const o of offersForDistance) {
+          const key = state.offerKey(o);
+          if (state.distances.has(key)) continue;
+          const obec = String(o?.obec || '').trim();
+          const krajCode = String(o?.kraj || o?.kraj_id || '').trim();
+          if (!obec) continue;
+          const coords = await lookupObecCoords(obec, krajCode);
+          if (coords) {
+            state.distances.set(key, haversineKm(state.userLoc, coords));
+          }
+        }
+        render(tag, state);
+        // If we already computed some distances, we're done.
+        if (state.distances.size > 0) {
+          state.remainingGeoQueries = 0;
+          return;
+        }
+      }
+
       const applyDistancesFromCache = () => {
         for (const o of offersForDistance) {
           const key = state.offerKey(o);
@@ -1043,7 +1134,9 @@
       if (state.userLoc && state.originResolved === val) return true;
 
       try {
-        const coords = await geocodeOnce(val + ', Czechia');
+        // For municipality names, prefer offline lookup (instant).
+        const local = await lookupObecCoords(val, '');
+        const coords = local || (await geocodeOnce(val + ', Czechia'));
         if (!coords) {
           if (statusEl) statusEl.textContent = 'Nepodařilo se najít polohu pro: ' + val;
           return false;
