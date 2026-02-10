@@ -453,6 +453,14 @@
     const wantsLimit = limitVal != null;
     const canLimit = !!state.userLoc && wantsLimit;
 
+    const nextLimitKm = wantsLimit ? limitVal : null;
+    if (state.activeLimitKm !== nextLimitKm) {
+      state.activeLimitKm = nextLimitKm;
+      state.prevLimitKm = nextLimitKm;
+      state.distanceComputeBatches = 0;
+      state.remainingGeoQueries = 0;
+    }
+
     let rows = state.offers.slice();
 
     rows = rows.filter((r) => {
@@ -473,25 +481,37 @@
 
     // km limit filter (requires origin geocoded)
     if (canLimit) {
-      const hasAnyDistance = state.distances.size > 0;
-
-      // If we haven't computed any distances yet, don't hide everything.
-      // We'll start filtering as soon as we know at least some distances.
-      if (!hasAnyDistance) {
-        if (statusEl) {
-          statusEl.textContent = state.isComputingDistances
-            ? 'Počítám dojezd…'
-            : 'Dojezd se nepodařilo spočítat.';
-        }
-      } else {
-        if (statusEl) statusEl.textContent = '';
-
-        rows = rows.filter((r) => {
+      const filterKnownWithin = (inputRows) =>
+        inputRows.filter((r) => {
           const key = state.offerKey(r);
           const km = state.distances.get(key);
-          if (typeof km !== 'number') return false;
-          return km <= limitVal;
+          return typeof km === 'number' && km <= limitVal;
         });
+
+      // While we're still computing (or can compute more), don't go blank.
+      // Show nearby results as soon as we have them; otherwise keep the list visible and continue.
+      const knownWithin = filterKnownWithin(rows);
+      const canComputeMore =
+        (state.remainingGeoQueries || 0) > 0 && (state.distanceComputeBatches || 0) < 4;
+
+      if (knownWithin.length > 0) {
+        if (statusEl) statusEl.textContent = '';
+        rows = knownWithin;
+      } else if (state.isComputingDistances || canComputeMore) {
+        if (statusEl) statusEl.textContent = 'Počítám dojezd…';
+        if (!state.isComputingDistances && !state.computeMoreScheduled && canComputeMore) {
+          state.computeMoreScheduled = true;
+          computeDistances(tag, state)
+            .catch(() => {})
+            .finally(() => {
+              state.computeMoreScheduled = false;
+            });
+        }
+        // keep rows unfiltered while we compute
+      } else {
+        if (statusEl) statusEl.textContent = '';
+        // final strict filter
+        rows = filterKnownWithin(rows);
       }
     }
 
@@ -630,6 +650,8 @@
   async function computeDistances(tag, state) {
     if (!state.userLoc) return;
     if (state.isComputingDistances) return;
+    // Only compute distances when a km radius filter is active.
+    if (!(Number.isFinite(state.activeLimitKm) && state.activeLimitKm != null)) return;
     state.isComputingDistances = true;
 
     const cache = state.geoCache;
@@ -640,65 +662,70 @@
 
     try {
 
-    const applyDistancesFromCache = () => {
-      for (const o of state.offers) {
-        const key = state.offerKey(o);
-        const q = bestGeocodeQueryForOffer(o);
-        const coords = q ? cache[q] : null;
-        if (coords && typeof coords === 'object') {
-          state.distances.set(key, haversineKm(state.userLoc, coords));
+      const applyDistancesFromCache = () => {
+        for (const o of state.offers) {
+          const key = state.offerKey(o);
+          const q = bestGeocodeQueryForOffer(o);
+          const coords = q ? cache[q] : null;
+          if (coords && typeof coords === 'object') {
+            state.distances.set(key, haversineKm(state.userLoc, coords));
+          }
         }
-      }
-    };
+      };
 
       // First, apply whatever is already cached.
       applyDistancesFromCache();
       render(tag, state);
 
-    const queryCounts = new Map();
-    for (const o of state.offers) {
-      const q = bestGeocodeQueryForOffer(o);
-      if (!q) continue;
-      queryCounts.set(q, (queryCounts.get(q) || 0) + 1);
-    }
+      const queryCounts = new Map();
+      for (const o of state.offers) {
+        const q = bestGeocodeQueryForOffer(o);
+        if (!q) continue;
+        queryCounts.set(q, (queryCounts.get(q) || 0) + 1);
+      }
 
-    const uniqueQueries = Array.from(queryCounts.keys()).filter(
-      (q) => !Object.prototype.hasOwnProperty.call(cache, q)
-    );
+      const uniqueQueries = Array.from(queryCounts.keys()).filter(
+        (q) => !Object.prototype.hasOwnProperty.call(cache, q)
+      );
+
+      state.remainingGeoQueries = uniqueQueries.length;
+      state.distanceComputeBatches = Number(state.distanceComputeBatches || 0) + 1;
 
       // polite throttling (and avoid too many requests)
       const MAX_LOOKUPS = 30;
-    const todo = uniqueQueries
-      .sort((a, b) => (queryCounts.get(b) || 0) - (queryCounts.get(a) || 0))
-      .slice(0, MAX_LOOKUPS);
+      const todo = uniqueQueries
+        .sort((a, b) => (queryCounts.get(b) || 0) - (queryCounts.get(a) || 0))
+        .slice(0, MAX_LOOKUPS);
 
-    for (let i = 0; i < todo.length; i++) {
-      const q = todo[i];
-      try {
-        const coords = await geocodeOnce(q);
-        if (coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lon)) {
-          cache[q] = coords;
-          saveGeoCache(cache);
-        } else {
+      for (let i = 0; i < todo.length; i++) {
+        const q = todo[i];
+        try {
+          const coords = await geocodeOnce(q);
+          if (coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lon)) {
+            cache[q] = coords;
+            saveGeoCache(cache);
+          } else {
+            cache[q] = null;
+            saveGeoCache(cache);
+          }
+        } catch {
+          // store null to prevent hammering
           cache[q] = null;
           saveGeoCache(cache);
         }
-      } catch {
-        // store null to prevent hammering
-        cache[q] = null;
-        saveGeoCache(cache);
+
+        // Update distances incrementally so the km filter works immediately.
+        applyDistancesFromCache();
+        render(tag, state);
+
+        // Keep it reasonably fast while still being polite.
+        await sleep(650);
       }
 
-      // Update distances incrementally so the km filter works immediately.
       applyDistancesFromCache();
       render(tag, state);
 
-      // Keep it reasonably fast while still being polite.
-      await sleep(650);
-    }
-
-      applyDistancesFromCache();
-      render(tag, state);
+      state.remainingGeoQueries = Math.max(0, uniqueQueries.length - todo.length);
     } finally {
       state.isComputingDistances = false;
 
@@ -730,8 +757,13 @@
       userLoc: null,
       originText: '',
       originResolved: '',
+      activeLimitKm: null,
+      prevLimitKm: null,
       distances: new Map(),
       isComputingDistances: false,
+      remainingGeoQueries: 0,
+      distanceComputeBatches: 0,
+      computeMoreScheduled: false,
       geoCache: loadGeoCache(),
       offerKey: (o) =>
         [o.cz_isco || '', o.zamestnavatel || '', o.okres || o.lokalita || '', o.datum || ''].join('|')
@@ -931,6 +963,7 @@
     const resolveOriginIfNeeded = async () => {
       const val = String(originEl?.value || '').trim();
       const { statusEl } = getInputs(tag);
+      const limitNow = parseIntOrNull(limitEl?.value);
       if (!val) {
         return false;
       }
@@ -947,6 +980,9 @@
         state.userLoc = coords;
         state.originText = val;
         state.originResolved = val;
+        state.activeLimitKm = limitNow;
+        state.distanceComputeBatches = 0;
+        state.remainingGeoQueries = 0;
         state.distances.clear();
         computeDistances(tag, state).catch(() => {});
         render(tag, state);
@@ -1053,6 +1089,11 @@
         state.userLoc = null;
         state.originText = '';
         state.originResolved = '';
+        state.activeLimitKm = null;
+        state.prevLimitKm = null;
+        state.distanceComputeBatches = 0;
+        state.remainingGeoQueries = 0;
+        state.computeMoreScheduled = false;
         const { statusEl } = getInputs(tag);
         if (statusEl) statusEl.textContent = '';
         render(tag, state);
