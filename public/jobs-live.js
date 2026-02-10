@@ -483,6 +483,14 @@
       });
     }
 
+    // Distance computations are expensive (geocoding). Only compute for offers that already
+    // passed the cheap filters so the first-time run on GitHub Pages is much faster.
+    if (wantsLimit) {
+      state.distanceCandidates = rows;
+    } else {
+      state.distanceCandidates = null;
+    }
+
     // km limit filter (requires origin geocoded)
     if (canLimit) {
       const filterKnownWithin = (inputRows) =>
@@ -688,13 +696,18 @@
     const cache = state.geoCache;
     const { statusEl } = getInputs(tag);
 
+    const offersForDistance =
+      Array.isArray(state.distanceCandidates) && state.distanceCandidates.length
+        ? state.distanceCandidates
+        : state.offers;
+
     const startedAt = Date.now();
     if (statusEl) statusEl.textContent = '';
 
     try {
 
       const applyDistancesFromCache = () => {
-        for (const o of state.offers) {
+        for (const o of offersForDistance) {
           const key = state.offerKey(o);
           const q = bestGeocodeQueryForOffer(o);
           const coords = q ? cache[q] : null;
@@ -709,7 +722,7 @@
       render(tag, state);
 
       const queryCounts = new Map();
-      for (const o of state.offers) {
+      for (const o of offersForDistance) {
         const q = bestGeocodeQueryForOffer(o);
         if (!q) continue;
         queryCounts.set(q, (queryCounts.get(q) || 0) + 1);
@@ -815,6 +828,7 @@
       originResolved: '',
       activeLimitKm: null,
       prevLimitKm: null,
+      distanceCandidates: null,
       distances: new Map(),
       isComputingDistances: false,
       remainingGeoQueries: 0,
@@ -1041,8 +1055,9 @@
         state.distanceComputeBatches = 0;
         state.remainingGeoQueries = 0;
         state.distances.clear();
-        computeDistances(tag, state).catch(() => {});
+        // Render first so we capture current distanceCandidates; then compute.
         render(tag, state);
+        computeDistances(tag, state).catch(() => {});
         return true;
       } catch (e) {
         if (statusEl) statusEl.textContent = 'Nepodařilo se geokódovat: ' + String(e);
@@ -1148,6 +1163,7 @@
         state.originResolved = '';
         state.activeLimitKm = null;
         state.prevLimitKm = null;
+        state.distanceCandidates = null;
         state.distanceComputeBatches = 0;
         state.remainingGeoQueries = 0;
         state.computeMoreScheduled = false;
