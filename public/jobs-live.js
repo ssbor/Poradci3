@@ -36,7 +36,7 @@
       .trim()
       .toLowerCase()
       .normalize('NFD')
-      .replace(/\p{Diacritic}+/gu, '')
+      .replace(/[\u0300-\u036f]+/g, '')
       .replace(/\s+/g, ' ');
   }
 
@@ -296,6 +296,197 @@
     const key = normalizeLookupKey(hint);
     const kraj = CZ_REGION_CODE_BY_KEY[key] || '';
     return { obec, kraj };
+  }
+
+  function escapeHtmlAttr(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  async function ensureObceSuggestItems() {
+    const idx = await ensureObceIndexLoaded();
+    if (!idx) return null;
+    if (Array.isArray(idx.__suggestItems)) return idx.__suggestItems;
+
+    const items = [];
+    const seen = new Set();
+    const byNameKraj = idx.byNameKraj || {};
+    for (const key of Object.keys(byNameKraj)) {
+      const sep = key.lastIndexOf('|');
+      if (sep < 0) continue;
+      const kraj = key.slice(sep + 1);
+      const v = byNameKraj[key];
+      const name = String(v?.n || '').trim();
+      if (!name) continue;
+      const krajName = CZ_REGION_NAME_BY_CODE[kraj] || '';
+      const okresName = String(v?.on || '').trim();
+      const label = okresName ? `${name} (okres ${okresName})` : krajName ? `${name}, ${krajName}` : name;
+      const fill = krajName ? `${name}, ${krajName}` : name;
+      if (seen.has(label)) continue;
+      seen.add(label);
+      items.push({ label, fill, nameKey: normalizeLookupKey(name), kraj, name });
+    }
+
+    // Fallback: if byNameKraj missing, build from byName (best-effort).
+    if (!items.length && idx.byName) {
+      for (const nn of Object.keys(idx.byName)) {
+        const opts = idx.byName[nn] || [];
+        for (const opt of opts) {
+          const name = String(opt?.n || '').trim();
+          const kraj = String(opt?.k || '').trim();
+          const krajName = CZ_REGION_NAME_BY_CODE[kraj] || '';
+          const okresName = String(opt?.on || '').trim();
+          const label = okresName ? `${name} (okres ${okresName})` : krajName ? `${name}, ${krajName}` : name;
+          const fill = krajName ? `${name}, ${krajName}` : name;
+          if (seen.has(label)) continue;
+          seen.add(label);
+          items.push({ label, fill, nameKey: normalizeLookupKey(name), kraj, name });
+        }
+      }
+    }
+
+    idx.__suggestItems = items;
+    return items;
+  }
+
+  function attachOriginAutocomplete(tag, state, originEl, regionSel, onPick) {
+    if (!originEl) return;
+    if (originEl.dataset.autocompleteBound === '1') return;
+    originEl.dataset.autocompleteBound = '1';
+
+    const host = originEl.closest('.field__row') || originEl.parentElement;
+    if (!host) return;
+    if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+
+    const box = document.createElement('div');
+    box.setAttribute('data-role', 'origin-suggest');
+    box.setAttribute('data-target', tag);
+    box.style.position = 'absolute';
+    box.style.left = '0';
+    box.style.right = '0';
+    box.style.top = 'calc(100% + 4px)';
+    box.style.zIndex = '50';
+    box.style.display = 'none';
+    box.style.maxHeight = '240px';
+    box.style.overflow = 'auto';
+    box.style.border = '1px solid rgba(0,0,0,.15)';
+    box.style.borderRadius = '10px';
+    box.style.background = '#fff';
+    box.style.boxShadow = '0 10px 30px rgba(0,0,0,.12)';
+    box.style.padding = '6px';
+
+    host.appendChild(box);
+
+    const hide = () => {
+      box.style.display = 'none';
+      box.innerHTML = '';
+    };
+
+    const show = () => {
+      if (!box.innerHTML) return;
+      box.style.display = 'block';
+    };
+
+    const renderItems = (items) => {
+      if (!items.length) {
+        hide();
+        return;
+      }
+
+      box.innerHTML = items
+        .map(
+          (it, i) =>
+            `<button type="button" data-i="${i}" style="display:block;width:100%;text-align:left;padding:8px 10px;border:0;background:transparent;border-radius:8px;cursor:pointer">${escapeHtmlAttr(it.label)}</button>`
+        )
+        .join('');
+
+      // hover style
+      box.querySelectorAll('button').forEach((btn) => {
+        btn.addEventListener('mouseenter', () => {
+          btn.style.background = 'rgba(0,0,0,.06)';
+        });
+        btn.addEventListener('mouseleave', () => {
+          btn.style.background = 'transparent';
+        });
+        btn.addEventListener('mousedown', (e) => {
+          // prevent blur before click
+          e.preventDefault();
+        });
+        btn.addEventListener('click', () => {
+          const idx = Number(btn.getAttribute('data-i'));
+          const picked = items[idx];
+          if (!picked) return;
+          originEl.value = picked.fill || picked.name || picked.label;
+          hide();
+          try {
+            onPick?.(picked);
+          } catch {
+            // ignore
+          }
+        });
+      });
+
+      show();
+    };
+
+    const update = debounce(async () => {
+      const raw = String(originEl.value || '').trim();
+      const q = raw.split(',')[0].trim();
+      const key = normalizeLookupKey(q);
+
+      if (!key || key.length < 2) {
+        hide();
+        return;
+      }
+
+      const all = await ensureObceSuggestItems();
+      if (!all) {
+        hide();
+        return;
+      }
+
+      const selectedRegion = normalizeRegionValue(regionSel ? regionSel.value : '');
+
+      const starts = [];
+      const contains = [];
+      for (const it of all) {
+        if (!it || !it.nameKey) continue;
+        const target = it.nameKey;
+        if (target.startsWith(key)) starts.push(it);
+        else if (target.includes(key)) contains.push(it);
+      }
+
+      const rank = (arr) => {
+        if (!selectedRegion) return arr;
+        const inRegion = [];
+        const other = [];
+        for (const it of arr) {
+          (it.kraj === selectedRegion ? inRegion : other).push(it);
+        }
+        return inRegion.concat(other);
+      };
+
+      const out = rank(starts).concat(rank(contains)).slice(0, 12);
+      renderItems(out);
+    }, 80);
+
+    originEl.addEventListener('input', () => {
+      update();
+    });
+    originEl.addEventListener('blur', () => {
+      // allow click to register
+      setTimeout(hide, 150);
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (box.style.display !== 'block') return;
+      if (e.key === 'Escape') {
+        hide();
+      }
+    });
   }
 
   function pickClosestResult(results, bias) {
@@ -1280,6 +1471,12 @@
         render(tag, state);
       }
     }, 450);
+
+    // Origin autocomplete (municipalities). Local-only UX: dropdown suggestions while typing.
+    attachOriginAutocomplete(tag, state, originEl, regionSel, () => {
+      state.page = 1;
+      autoResolveOriginAndRender();
+    });
     regionSel?.addEventListener('change', rerender);
     minwEl?.addEventListener('input', rerender);
     originEl?.addEventListener('input', () => {

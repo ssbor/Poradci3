@@ -55,8 +55,22 @@ function normalizeName(s) {
     .trim()
     .toLowerCase()
     .normalize('NFD')
-    .replace(/\p{Diacritic}+/gu, '')
+    .replace(/[\u0300-\u036f]+/g, '')
     .replace(/\s+/g, ' ');
+}
+
+function detectDbfEncoding(extractDir, layerBaseName) {
+  const base = String(layerBaseName || '').trim() || 'OBCE_P';
+  const cpgPath = path.join(extractDir, `${base}.cpg`);
+  if (!exists(cpgPath)) return 'utf-8';
+  const raw = String(fs.readFileSync(cpgPath, 'utf8') || '').trim().toLowerCase();
+  if (!raw) return 'utf-8';
+
+  // Common values for ČÚZK/RÚIAN shapefiles are e.g. "1250".
+  if (raw.includes('1250')) return 'cp1250';
+  if (raw.includes('utf')) return 'utf-8';
+  if (raw.includes('8859-2') || raw.includes('latin2')) return 'iso-8859-2';
+  return raw;
 }
 
 function centroidOfRing(ring) {
@@ -131,7 +145,12 @@ async function extractNeeded(zipPath, outDir) {
       '1/OBCE_P.shx',
       '1/OBCE_P.dbf',
       '1/OBCE_P.prj',
-      '1/OBCE_P.cpg'
+      '1/OBCE_P.cpg',
+      '1/OKRESY_P.shp',
+      '1/OKRESY_P.shx',
+      '1/OKRESY_P.dbf',
+      '1/OKRESY_P.prj',
+      '1/OKRESY_P.cpg'
     ];
 
     for (const entry of needed) {
@@ -180,9 +199,43 @@ async function main() {
   const shpPath = path.join(EXTRACT_DIR, 'OBCE_P.shp');
   const dbfPath = path.join(EXTRACT_DIR, 'OBCE_P.dbf');
 
+  const okresShpPath = path.join(EXTRACT_DIR, 'OKRESY_P.shp');
+  const okresDbfPath = path.join(EXTRACT_DIR, 'OKRESY_P.dbf');
+
+  const okresByCode = {};
+  if (exists(okresShpPath) && exists(okresDbfPath)) {
+    console.log('[obce] reading OKRESY_P for okres names…');
+    const okresEncoding = detectDbfEncoding(EXTRACT_DIR, 'OKRESY_P');
+    console.log(`[obce] OKRESY_P DBF encoding: ${okresEncoding}`);
+    const osrc = await shapefile.open(okresShpPath, okresDbfPath, { encoding: okresEncoding });
+
+    let codeField = null;
+    let nameField = null;
+
+    while (true) {
+      const { done, value } = await osrc.read();
+      if (done) break;
+      const props = value?.properties || {};
+      if (!codeField) {
+        codeField = pickField(props, ['KOD', 'OKRES_KOD', 'KOD_OKRES', 'CODE']);
+        nameField = pickField(props, ['NAZEV', 'NAZ_OKRES', 'NAZEV_OKRES', 'NAME']);
+      }
+      const code = codeField ? String(props?.[codeField] || '').trim() : '';
+      const name = nameField ? String(props?.[nameField] || '').trim() : '';
+      if (code && name) okresByCode[code] = name;
+    }
+
+    const n = Object.keys(okresByCode).length;
+    console.log(`[obce] loaded ${n} okres names`);
+  } else {
+    console.log('[obce] OKRESY_P layer not found; okres names will be missing');
+  }
+
   console.log('[obce] reading shapefile and computing centroids…');
 
-  const src = await shapefile.open(shpPath, dbfPath, { encoding: 'utf-8' });
+  const dbfEncoding = detectDbfEncoding(EXTRACT_DIR, 'OBCE_P');
+  console.log(`[obce] DBF encoding: ${dbfEncoding}`);
+  const src = await shapefile.open(shpPath, dbfPath, { encoding: dbfEncoding });
 
   let nameField = null;
   let krajField = null;
@@ -199,8 +252,9 @@ async function main() {
     const props = value?.properties || {};
     if (!nameField) {
       nameField = pickField(props, ['NAZEV', 'NAZEV_OBCE', 'NAZ_OBEC']);
-      krajField = pickField(props, ['KOD_VUSC', 'KOD_KRAJ', 'VUSC_KOD', 'KRAJ_KOD']);
-      okresField = pickField(props, ['KOD_OKRES', 'OKRES_KOD', 'NAZ_OKRES', 'OKRES']);
+      // Prefer NUTS3 codes (CZ0xx) for compatibility with UI filters.
+      krajField = pickField(props, ['NUTS3_KOD', 'NUTS3', 'NUTS3_CODE']);
+      okresField = pickField(props, ['OKRES_KOD', 'KOD_OKRES', 'KOD_OKRESU']);
       if (!nameField) {
         throw new Error('[obce] cannot detect municipality name field in OBCE_P.dbf');
       }
@@ -216,13 +270,15 @@ async function main() {
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
 
     const kraj = krajField ? String(props?.[krajField] || '').trim() : '';
-    const okres = okresField ? String(props?.[okresField] || '').trim() : '';
+    const okresCode = okresField ? String(props?.[okresField] || '').trim() : '';
+    const okresName = okresCode ? String(okresByCode[okresCode] || '').trim() : '';
 
     items.push({
       n: name,
       nn: normalizeName(name),
       k: kraj,
-      o: okres,
+      o: okresCode,
+      on: okresName,
       lat: Number(lat),
       lon: Number(lon)
     });
@@ -234,10 +290,16 @@ async function main() {
 
   for (const it of items) {
     if (!byName[it.nn]) byName[it.nn] = [];
-    byName[it.nn].push({ n: it.n, k: it.k, o: it.o, lat: it.lat, lon: it.lon });
+    byName[it.nn].push({ n: it.n, k: it.k, o: it.o, on: it.on, lat: it.lat, lon: it.lon });
 
     if (it.k) {
-      byNameKraj[`${it.nn}|${it.k}`] = { lat: it.lat, lon: it.lon, n: it.n, o: it.o };
+      byNameKraj[`${it.nn}|${it.k}`] = {
+        lat: it.lat,
+        lon: it.lon,
+        n: it.n,
+        o: it.o,
+        on: it.on
+      };
     }
   }
 
