@@ -10,7 +10,10 @@ on:
 # Prevent concurrent Pages deployments (deploy-pages API rejects when one is already in progress).
 concurrency:
   group: "pages-deploy"
-  cancel-in-progress: true
+  # IMPORTANT: do not cancel in-progress runs during deploy.
+  # Cancelling deploy-pages mid-flight can leave a Pages deployment stuck as "in progress",
+  # which then blocks all subsequent deployments with HTTP 400.
+  cancel-in-progress: false
 
 
 jobs:
