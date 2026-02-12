@@ -425,8 +425,55 @@ div[data-role="pager"][data-pos="top"] select[data-role="page-size"]{
 .table th{ font-size:.92rem; color:#40506b; background: #fbfdff; }
 .table td.td-date{ white-space: nowrap; }
 
-.tag{ font-size:.82rem; background:#eaf2ff; color:#244a8e; padding:.2rem .55rem; border-radius:999px; }
+.tag{ display:inline-flex; align-items:center; width: fit-content; font-size:.82rem; background:#eaf2ff; color:#244a8e; padding:.18rem .45rem; border-radius:999px; white-space: nowrap; }
 .badge{ font-size:.72rem; background:#fff; color:#124a9a; padding:.15rem .45rem; border-radius:999px; border:1px solid rgba(255,255,255,.65); }
+
+/* Vzdělání: slightly more compact filter boxes */
+form[data-role="skoly-form"] .field{ gap: .25rem; }
+form[data-role="skoly-form"] .field__label{ font-size: .8rem; }
+form[data-role="skoly-form"] .input,
+form[data-role="skoly-form"] .select{
+  padding: 9px 10px;
+  border-radius: 11px;
+}
+
+/* Vzdělání: put filters next to the search field */
+form[data-role="skoly-form"] .skoly-top-row{
+  display:flex;
+  align-items:flex-end;
+  gap: .8rem;
+  flex-wrap: wrap;
+}
+form[data-role="skoly-form"] .skoly-search{ flex: 1 1 520px; min-width: 320px; }
+form[data-role="skoly-form"] .skoly-search .input{ width: 100%; }
+
+form[data-role="skoly-form"] .skoly-filters-row{
+  display:flex;
+  align-items:flex-end;
+  gap: .55rem;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+}
+
+/* Keep them on one row when there is enough width */
+@media (min-width: 1100px){
+  form[data-role="skoly-form"] .skoly-filters-row{ flex-wrap: nowrap; }
+}
+
+/* Selects: shrink-to-fit but cap width to avoid long empty space */
+form[data-role="skoly-form"] .skoly-filters-row select.select{
+  width: max-content;
+  max-width: 210px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Stupeň vzdělání: cap a bit more (was visually too long) */
+form[data-role="skoly-form"] select[data-role="skoly-stupen"]{ max-width: 185px; }
+
+/* Ensure action row spans full width */
+form[data-role="skoly-form"] .col-12{ grid-column: 1 / -1; }
 
 .muted{ color: var(--muted); }
 

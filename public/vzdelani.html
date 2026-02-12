@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <title>Vzdělání – SŠ Bor (poradci)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="style.css?v=20260208-1">
+  <link rel="stylesheet" href="style.css?v=20260212-4">
   <link rel="stylesheet" href="chatbot.css">
 </head>
 <body>
@@ -62,36 +62,54 @@
       <p class="section-sub">Vyhledávání je lokální (bez online dotazů) – data se stáhnou denně při buildu.</p>
 
       <div class="card" style="margin-top: 1rem">
-        <form data-role="skoly-form" class="grid" style="gap: .85rem">
-          <div class="field col-12">
-            <label class="field__label" for="skoly-q">Škola / obor</label>
-            <input id="skoly-q" class="input" data-role="skoly-q" placeholder="Např. nástavba, automechanik, svářeč, Plzeň…" autocomplete="off" />
-          </div>
+        <form data-role="skoly-form" class="grid" style="gap: .6rem">
+          <div class="skoly-top-row col-12">
+            <div class="field skoly-search">
+              <label class="field__label" for="skoly-q">Škola / obor</label>
+              <input id="skoly-q" class="input" data-role="skoly-q" placeholder="Např. nástavba, automechanik, svářeč, Plzeň…" autocomplete="off" />
+            </div>
 
-          <div class="field col-4">
-            <label class="field__label" for="skoly-kraj">Kraj</label>
-            <select id="skoly-kraj" class="select" data-role="skoly-kraj" aria-label="Kraj">
-              <option value="">Načítám…</option>
-            </select>
-          </div>
+            <div class="skoly-filters-row" aria-label="Filtry">
+              <div class="field">
+                <label class="field__label" for="skoly-kraj">Kraj</label>
+                <select id="skoly-kraj" class="select" data-role="skoly-kraj" aria-label="Kraj">
+                  <option value="">Načítám…</option>
+                </select>
+              </div>
 
-          <div class="field col-4">
-            <label class="field__label" for="skoly-forma">Forma studia</label>
-            <select id="skoly-forma" class="select" data-role="skoly-forma" aria-label="Forma studia">
-              <option value="">Načítám…</option>
-            </select>
-          </div>
+              <div class="field">
+                <label class="field__label" for="skoly-druh">Druh školy</label>
+                <select id="skoly-druh" class="select" data-role="skoly-druh" aria-label="Druh školy">
+                  <option value="">Načítám…</option>
+                </select>
+              </div>
 
-          <div class="field col-4">
-            <label class="field__label" for="skoly-ukonceni">Ukončení</label>
-            <select id="skoly-ukonceni" class="select" data-role="skoly-ukonceni" aria-label="Ukončení studia">
-              <option value="">Načítám…</option>
-            </select>
+              <div class="field">
+                <label class="field__label" for="skoly-typ">Typ školy</label>
+                <select id="skoly-typ" class="select" data-role="skoly-typ" aria-label="Typ školy">
+                  <option value="">Načítám…</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label class="field__label" for="skoly-stupen">Stupeň vzdělání</label>
+                <select id="skoly-stupen" class="select" data-role="skoly-stupen" aria-label="Stupeň vzdělání">
+                  <option value="">Načítám…</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label class="field__label" for="skoly-forma">Forma studia</label>
+                <select id="skoly-forma" class="select" data-role="skoly-forma" aria-label="Forma studia">
+                  <option value="">Načítám…</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           <div class="col-12" style="display:flex; gap:.6rem; flex-wrap:wrap; align-items:center">
             <button class="btn btn--primary" type="submit">Hledat</button>
-            <a class="btn btn--ghost" href="kurzy.html">Kurzy / rekvalifikace</a>
+            <button class="btn btn--ghost" type="button" data-role="skoly-clear">Vyčistit filtry</button>
             <div class="muted" data-role="skoly-status" style="margin-left:auto"></div>
           </div>
         </form>

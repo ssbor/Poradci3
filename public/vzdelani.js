@@ -10,6 +10,155 @@
       .replace(/\s+/g, ' ');
   }
 
+  function escapeRegExp(s) {
+    return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function tokenInText(text, token) {
+    const t = String(token || '').trim();
+    if (!t) return true;
+    const hay = String(text || '');
+    // Prevent noisy substring matches for very short tokens (e.g. "vs").
+    if (t.length <= 2) {
+      const re = new RegExp(`(^|\\s)${escapeRegExp(t)}(\\s|$)`);
+      return re.test(hay);
+    }
+    return hay.includes(t);
+  }
+
+  // Expand common user terms into official program-name equivalents.
+  // Returns an array of token arrays; a hit matches if ANY variant matches.
+  function expandQueryVariants(qRaw) {
+    const base = normalizeKey(String(qRaw || ''));
+    if (!base) return [];
+
+    // Keep this list small and high-signal; we can add more as needed.
+    const synonyms = {
+      // --- Frequent colloquial → official / dataset wording ---
+      automechanik: ['mechanik opravar motorovych vozidel'],
+      autotronik: ['autotronik'],
+      autolakyrnik: ['lakyrnik', 'lakyrnik a karosar'],
+      karosar: ['karosar'],
+
+      elektrik: ['elektrikar', 'elektrotechnika'],
+      elektrikar: ['elektrotechnika'],
+      silnoproud: ['elektrotechnika'],
+      slaboproud: ['elektrotechnika'],
+
+      instalater: ['instalater', 'instalaterske prace'],
+      vodar: ['instalater'],
+      topenar: ['instalater', 'topenarstvi'],
+      plynar: ['instalater', 'plynar'],
+
+      zednik: ['zednik', 'stavebni prace'],
+      stolar: ['truhlar', 'stolar'],
+      truhlar: ['truhlar'],
+      tesar: ['tesar'],
+      pokryvac: ['pokryvac'],
+      malir: ['malir', 'lakyrnik'],
+      naterac: ['malir', 'lakyrnik'],
+      obkladac: ['zednik'],
+
+      svarec: ['svarec', 'zamecnik', 'strojirenstvi'],
+      zamecnik: ['zamecnik', 'strojirenstvi'],
+      obrabec: ['obrabec kovu', 'strojirenstvi'],
+      soustruznik: ['obrabec kovu', 'strojirenstvi'],
+      frezar: ['obrabec kovu', 'strojirenstvi'],
+      cnc: ['obrabec kovu', 'strojirenstvi'],
+      mechanik: ['mechanik', 'strojirenstvi'],
+
+      ajtak: ['informatika', 'informacni technologie'],
+      itak: ['informatika', 'informacni technologie'],
+      ajt: ['informatika', 'informacni technologie'],
+      informatik: ['informatika', 'informacni technologie'],
+      programator: ['informatika', 'informacni technologie'],
+      vyvojar: ['informatika', 'informacni technologie'],
+      sitar: ['informatika', 'informacni technologie', 'pocitacove site'],
+
+      kuchar: ['kuchar', 'gastronomie'],
+      cisnik: ['cisnik', 'servirka', 'gastronomie'],
+      servirka: ['cisnik', 'servirka', 'gastronomie'],
+      cukrar: ['cukrar'],
+      pekar: ['pekar'],
+      reznik: ['reznik', 'uzenar'],
+      reznikar: ['reznik', 'uzenar'],
+
+      kadernice: ['kadernik'],
+      kadernik: ['kadernik'],
+      kosmeticka: ['kosmeticke sluzby', 'kosmeticka'],
+
+      zdravotnik: ['prakticka sestra', 'zdravotnictvi'],
+      sestra: ['prakticka sestra', 'zdravotnictvi'],
+      pecovatelka: ['socialni pece', 'pecovatelske sluzby'],
+      socialka: ['socialni cinnost', 'socialni pece'],
+
+      obchodak: ['obchodni akademie', 'ekonomika'],
+      ekonom: ['ekonomika'],
+      ucetni: ['ucetnictvi', 'ekonomika'],
+
+      grafik: ['grafika', 'graficky design'],
+      designer: ['design', 'grafika'],
+      fotograf: ['fotografie'],
+
+      policajt: ['bezpecnostne pravni cinnost', 'bezpecnost'],
+      hasic: ['pozarni ochrana', 'bezpecnost'],
+
+      ridic: ['doprava', 'logistika'],
+      logistika: ['logistika', 'doprava'],
+
+      // Common abbreviations (short tokens handled with word-boundary matching)
+      vos: ['vyssi odborna skola', 'vyssi odborne'],
+      vs: ['vysoka skola', 'vysoke'],
+      sps: ['stredni prumyslova skola'],
+      soš: ['stredni odborna skola'],
+      sos: ['stredni odborna skola'],
+      sou: ['stredni odborne uciliste'],
+
+      // Common study terms
+      nastavba: ['nastavbove studium', 'nastavbove'],
+      maturita: ['maturitni', 'uplne stredni'],
+      vyucni: ['vyucni list', 'vyuceni'],
+      vyucak: ['vyucni list', 'vyuceni'],
+      zkacene: ['zkracene studium', 'zkracene'],
+      zkracene: ['zkracene studium', 'zkracene']
+    };
+
+    const seed = new Set([base]);
+    const queue = [base];
+    const maxVariants = 12;
+
+    while (queue.length && seed.size < maxVariants) {
+      const cur = queue.shift();
+      for (const [from, repls] of Object.entries(synonyms)) {
+        const fromN = normalizeKey(from);
+        if (!fromN) continue;
+
+        // Match whole word / phrase boundaries.
+        const re = new RegExp(`(^|\\s)${escapeRegExp(fromN)}(\\s|$)`, 'g');
+        if (!re.test(cur)) continue;
+
+        for (const r of repls) {
+          const rN = normalizeKey(r);
+          if (!rN) continue;
+          const next = normalizeKey(cur.replace(re, `$1${rN}$2`));
+          if (!seed.has(next)) {
+            seed.add(next);
+            queue.push(next);
+            if (seed.size >= maxVariants) break;
+          }
+        }
+        if (seed.size >= maxVariants) break;
+      }
+    }
+
+    // Always include the original query as one variant.
+    if (!seed.has(base)) seed.add(base);
+
+    return [...seed]
+      .map((s) => s.split(' ').filter(Boolean))
+      .filter((arr) => arr.length);
+  }
+
   function escapeHtml(s) {
     return String(s)
       .replaceAll('&', '&amp;')
@@ -54,22 +203,66 @@
     return m[k] || k;
   }
 
-  function labelUkonceni(id) {
+  function labelStupenVzdelani(id) {
+    const k0 = shortId(id);
+    if (!k0) return '';
+    const k = String(k0);
+    const m = {
+      zaklPraktSkol: 'Základní / praktická škola',
+      nizsiStredOdbor: 'Nižší střední odborné',
+      stredOdbor: 'Střední odborné',
+      stredOdborVyuc: 'Střední odborné (výuční list)',
+      usoSMat: 'Úplné střední odborné (maturita)',
+      usoSMatVyuc: 'Úplné střední odborné (maturita + výuční list)',
+      usv: 'Úplné střední všeobecné (maturita)',
+      vyssOdbor: 'Vyšší odborné',
+      konz: 'Konzervatoř',
+      vysoka: 'Vysoká škola',
+      bakal: 'VŠ bakalářské',
+      doktor: 'VŠ doktorské',
+      ne: 'Neuvedeno'
+    };
+    return m[k] || k;
+  }
+
+  function labelTypSkoly(id) {
     const k = shortId(id);
     if (!k) return '';
     const m = {
-      // MPSV codes seen in data: abs, jin, mat, ne, stzk, zavz, zzvl
-      mat: 'Maturitní zkouška',
-      stzk: 'Státní závěrečná zkouška',
-      zavz: 'Závěrečná zkouška',
-      zzvl: 'Závěrečná zkouška + výuční list',
-      abs: 'Absolutorium',
-      ne: 'Bez ukončení',
-      jin: 'Jiné',
+      stat: 'Státní',
+      soukr: 'Soukromá',
+      ver: 'Veřejná',
+      cirk: 'Církevní',
+      voj: 'Vojenská',
+      spec: 'Speciální',
+      zahr: 'Zahraniční'
+    };
+    return m[k] || k;
+  }
 
-      // fallback/synonyms (just in case)
-      vyuc: 'Výuční list',
-      zavr: 'Závěrečná zkouška'
+  function labelDruhSkoly(id) {
+    const k0 = shortId(id);
+    if (!k0) return '';
+    // Note: ids are mixed-case in dataset (e.g., sOS, IntSS)
+    const k = String(k0);
+    const m = {
+      // Common
+      sOS: 'Střední odborná škola',
+      sS: 'Střední škola',
+      gymn: 'Gymnázium',
+      sOU: 'Střední odborné učiliště',
+      vos: 'Vyšší odborná škola',
+      vs: 'Vysoká škola',
+      jazyk: 'Jazyková škola',
+
+      // Other
+      prakt: 'Praktická škola',
+      konz: 'Konzervatoř',
+      odbrU: 'Odborné učiliště',
+      spec: 'Speciální škola',
+      IntSS: 'Integrovaná střední škola',
+      vyu: 'Výchovný ústav (škola)',
+      ucil: 'Učiliště'
     };
     return m[k] || k;
   }
@@ -110,7 +303,7 @@
     const progHtml = matches
       .slice(0, 6)
       .map((p) => {
-        const chips = [p.forma ? labelForma(p.forma) : '', p.ukonceni ? labelUkonceni(p.ukonceni) : '']
+        const chips = [p.forma ? labelForma(p.forma) : '', p.stupen ? labelStupenVzdelani(p.stupen) : '']
           .filter(Boolean)
           .map((x) => `<span class="tag" style="margin-right:.35rem">${escapeHtml(x)}</span>`)
           .join('');
@@ -240,8 +433,11 @@
     const form = document.querySelector('[data-role=skoly-form]');
     const qEl = document.querySelector('input[data-role=skoly-q]');
     const krajEl = document.querySelector('select[data-role=skoly-kraj]');
+    const typEl = document.querySelector('select[data-role=skoly-typ]');
+    const druhEl = document.querySelector('select[data-role=skoly-druh]');
+    const stupenEl = document.querySelector('select[data-role=skoly-stupen]');
     const formaEl = document.querySelector('select[data-role=skoly-forma]');
-    const ukEl = document.querySelector('select[data-role=skoly-ukonceni]');
+    const clearEl = document.querySelector('[data-role=skoly-clear]');
     const statusEl = document.querySelector('[data-role=skoly-status]');
     const outEl = document.querySelector('[data-role=skoly-results]');
 
@@ -264,8 +460,10 @@
 
     // Build filter options from data
     const krajMap = new Map();
+    const typMap = new Map();
+    const druhMap = new Map();
     const formaMap = new Map();
-    const ukMap = new Map();
+    const stupenMap = new Map();
 
     for (const s of schools) {
       const addr = s?.adresa || {};
@@ -273,9 +471,19 @@
         const label = addr.kraj || shortId(addr.krajId);
         krajMap.set(String(addr.krajId), String(label));
       }
+
+      if (s?.typSkoly) {
+        typMap.set(String(s.typSkoly), labelTypSkoly(s.typSkoly));
+      }
+
+      for (const d of s?.druhySkoly || []) {
+        if (!d) continue;
+        druhMap.set(String(d), labelDruhSkoly(d));
+      }
+
       for (const p of s?.programs || []) {
         if (p?.forma) formaMap.set(String(p.forma), labelForma(p.forma));
-        if (p?.ukonceni) ukMap.set(String(p.ukonceni), labelUkonceni(p.ukonceni));
+        if (p?.stupen) stupenMap.set(String(p.stupen), labelStupenVzdelani(p.stupen));
       }
     }
 
@@ -287,13 +495,23 @@
       .map(([value, label]) => ({ value, label }))
       .sort((a, b) => a.label.localeCompare(b.label, 'cs'));
 
-    const ukOpts = [...ukMap.entries()]
+    const stupenOpts = [...stupenMap.entries()]
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'cs'));
+
+    const typOpts = [...typMap.entries()]
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'cs'));
+
+    const druhOpts = [...druhMap.entries()]
       .map(([value, label]) => ({ value, label }))
       .sort((a, b) => a.label.localeCompare(b.label, 'cs'));
 
     setSelectOptions(krajEl, buildOptionList(krajOpts, { emptyLabel: 'Všechny kraje' }));
+    setSelectOptions(typEl, buildOptionList(typOpts, { emptyLabel: 'Všechny typy' }));
+    setSelectOptions(druhEl, buildOptionList(druhOpts, { emptyLabel: 'Všechny druhy' }));
+    setSelectOptions(stupenEl, buildOptionList(stupenOpts, { emptyLabel: 'Všechny stupně' }));
     setSelectOptions(formaEl, buildOptionList(formaOpts, { emptyLabel: 'Všechny formy studia' }));
-    setSelectOptions(ukEl, buildOptionList(ukOpts, { emptyLabel: 'Všechna ukončení' }));
 
     statusEl.textContent = `Načteno: ${schools.length} škol / ${Number(data?.count_programs || 0)} oborů.`;
 
@@ -308,43 +526,59 @@
     const criteriaKey = () => {
       const q = normalizeKey(String(qEl?.value || '').trim());
       const krajId = String(krajEl?.value || '').trim();
+      const typSkoly = String(typEl?.value || '').trim();
+      const druhSkoly = String(druhEl?.value || '').trim();
+      const stupen = String(stupenEl?.value || '').trim();
       const forma = String(formaEl?.value || '').trim();
-      const ukonceni = String(ukEl?.value || '').trim();
-      return JSON.stringify([q, krajId, forma, ukonceni]);
+      return JSON.stringify([q, krajId, typSkoly, druhSkoly, stupen, forma]);
     };
 
     const computeHits = () => {
       const qRaw = String(qEl?.value || '').trim();
       const q = normalizeKey(qRaw);
-      const tokens = q.split(' ').filter(Boolean);
+      const tokenVariants = expandQueryVariants(qRaw);
+      const hasTokens = tokenVariants.length > 0;
 
       const krajId = String(krajEl?.value || '').trim();
+      const typSkoly = String(typEl?.value || '').trim();
+      const druhSkoly = String(druhEl?.value || '').trim();
+      const stupen = String(stupenEl?.value || '').trim();
       const forma = String(formaEl?.value || '').trim();
-      const ukonceni = String(ukEl?.value || '').trim();
+      const hasProgramFilter = Boolean(forma || stupen);
 
       const hits = [];
 
       for (const s of schools) {
         if (krajId && String(s?.adresa?.krajId || '') !== krajId) continue;
+        if (typSkoly && String(s?.typSkoly || '') !== typSkoly) continue;
+        if (druhSkoly) {
+          const list = Array.isArray(s?.druhySkoly) ? s.druhySkoly : [];
+          if (!list.map(String).includes(String(druhSkoly))) continue;
+        }
 
-        const schoolMatch = !tokens.length
+        const schoolMatch = !hasTokens
           ? true
-          : tokens.every((t) => String(s.nk || '').includes(t) || String(s.ak || '').includes(t));
+          : tokenVariants.some((variant) =>
+              variant.every((t) => tokenInText(String(s.nk || ''), t) || tokenInText(String(s.ak || ''), t))
+            );
 
         const matchedPrograms = [];
         for (const p of s?.programs || []) {
           if (forma && String(p.forma || '') !== forma) continue;
-          if (ukonceni && String(p.ukonceni || '') !== ukonceni) continue;
+          if (stupen && String(p.stupen || '') !== stupen) continue;
 
-          if (!tokens.length) {
+          if (!hasTokens) {
             matchedPrograms.push(p);
             continue;
           }
 
           const target = String(p.nk || '') + ' ' + normalizeKey(p.code || '');
-          const ok = tokens.every((t) => target.includes(t));
+          const ok = tokenVariants.some((variant) => variant.every((t) => tokenInText(target, t)));
           if (ok) matchedPrograms.push(p);
         }
+
+        // If user selected program-level filters, only include schools with at least one matching program.
+        if (hasProgramFilter && !matchedPrograms.length) continue;
 
         if (!matchedPrograms.length && !schoolMatch) continue;
 
@@ -455,8 +689,27 @@
       if (String(qEl.value || '').trim().length >= 3) runSearch({ resetPage: true });
     });
     krajEl?.addEventListener('change', () => runSearch({ resetPage: true }));
+    typEl?.addEventListener('change', () => runSearch({ resetPage: true }));
+    druhEl?.addEventListener('change', () => runSearch({ resetPage: true }));
+    stupenEl?.addEventListener('change', () => runSearch({ resetPage: true }));
     formaEl?.addEventListener('change', () => runSearch({ resetPage: true }));
-    ukEl?.addEventListener('change', () => runSearch({ resetPage: true }));
+
+    clearEl?.addEventListener('click', () => {
+      if (qEl) qEl.value = '';
+      if (krajEl) krajEl.value = '';
+      if (druhEl) druhEl.value = '';
+      if (typEl) typEl.value = '';
+      if (stupenEl) stupenEl.value = '';
+      if (formaEl) formaEl.value = '';
+
+      lastKey = '';
+      state.page = 1;
+      runSearch({ resetPage: true });
+      scrollResultsToTop(outEl);
+      try {
+        qEl?.focus();
+      } catch {}
+    });
 
     // initial view
     runSearch({ resetPage: true });

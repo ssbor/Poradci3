@@ -153,8 +153,15 @@ function buildIndex(rawSchools, maps) {
     const okres = okresyById?.get(okresId) || { name: '' };
     const obec = obceById?.get(obecId) || { name: '' };
 
-    const programs = [];
     const parts = Array.isArray(s?.soucastiSkoly) ? s.soucastiSkoly : [];
+
+    const druhySkolySet = new Set();
+    for (const part of parts) {
+      const d = String(part?.druhSkoly?.id || '').trim();
+      if (d) druhySkolySet.add(d);
+    }
+
+    const programs = [];
     for (const part of parts) {
       const obory = Array.isArray(part?.vyucovaneObory) ? part.vyucovaneObory : [];
       for (const o of obory) {
@@ -189,6 +196,7 @@ function buildIndex(rawSchools, maps) {
       url: String(s?.urlAdresa || '').trim(),
       typSkoly: String(s?.typSkoly?.id || '').trim(),
       typZrizovatele: String(s?.typZrizovatele?.id || '').trim(),
+      druhySkoly: [...druhySkolySet],
       adresa: {
         psc: String(addr?.psc || '').trim(),
         ulice: String(ulice || '').trim(),
