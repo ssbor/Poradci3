@@ -206,6 +206,19 @@
     };
   }
 
+  function scrollResultsToTop(outEl) {
+    if (!outEl) return;
+    const topPager = outEl.querySelector('[data-role=skoly-pager][data-pos=top]');
+    const target = topPager || outEl.closest('section') || outEl;
+    requestAnimationFrame(() => {
+      try {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch {
+        target.scrollIntoView(true);
+      }
+    });
+  }
+
   async function init() {
     const form = document.querySelector('[data-role=skoly-form]');
     const qEl = document.querySelector('input[data-role=skoly-q]');
@@ -327,7 +340,7 @@
       return hits;
     };
 
-    const renderPage = () => {
+    const renderPage = ({ scrollTop = false } = {}) => {
       const hits = lastHits;
 
       const pageSizeRaw = state.pageSize;
@@ -367,6 +380,8 @@
       outEl.querySelectorAll('select[data-role=skoly-page-size]').forEach((sel) => {
         if (String(sel.value) !== desired) sel.value = desired;
       });
+
+      if (scrollTop) scrollResultsToTop(outEl);
     };
 
     const runSearch = ({ resetPage = false } = {}) => {
@@ -377,7 +392,7 @@
         lastHits = computeHits();
       }
       if (resetPage || changed) state.page = 1;
-      renderPage();
+      renderPage({ scrollTop: false });
     };
 
     // pager handlers
@@ -387,12 +402,12 @@
 
       if (t.matches('button[data-role=skoly-page-prev]')) {
         state.page = Math.max(1, Number(state.page || 1) - 1);
-        renderPage();
+        renderPage({ scrollTop: true });
         return;
       }
       if (t.matches('button[data-role=skoly-page-next]')) {
         state.page = Number(state.page || 1) + 1;
-        renderPage();
+        renderPage({ scrollTop: true });
         return;
       }
     });
@@ -404,7 +419,7 @@
       const val = String(t.value || '30');
       state.pageSize = val === 'all' ? 'all' : Number(val) || 30;
       state.page = 1;
-      renderPage();
+      renderPage({ scrollTop: true });
     });
 
     form?.addEventListener('submit', (e) => {
