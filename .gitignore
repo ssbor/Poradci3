@@ -4,3 +4,8 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Generated during build (GitHub Actions deploys ./public)
+public/data/skoly.json
+public/data/skoly_index.json
+public/data/skoly_meta.json

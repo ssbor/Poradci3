@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "build": "node tools/build-daily.js && node tools/build-obce-centroids.js"
+    "build": "node tools/build-daily.js && node tools/build-obce-centroids.js && node tools/build-schools.js"
   },
   "dependencies": {
     "node-stream-zip": "^1.15.0",

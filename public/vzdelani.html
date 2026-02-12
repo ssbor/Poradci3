@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <title>Vzdělání – SŠ Bor (poradci)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style.css?v=20260208-1">
+  <link rel="stylesheet" href="chatbot.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="index.html" aria-label="Domů">
+        <div class="brand-mark" style="background: linear-gradient(135deg, #4f46e5 0%, #8b5cf6 100%);">SŠ</div>
+        <div>
+          <p class="brand-title">Střední škola Bor</p>
+          <p class="brand-sub">Kariérové poradenství · Vzdělání</p>
+        </div>
+      </a>
+      <nav class="nav" aria-label="Hlavní navigace">
+        <a href="index.html#obory">Obory</a>
+        <a href="vzdelani.html">Vzdělání</a>
+        <a href="kurzy.html">Kurzy</a>
+        <a href="index.html#faq">FAQ</a>
+        <a href="index.html#kontakt">Kontakt</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="section">
+      <div class="hero" style="background: linear-gradient(120deg, rgba(79,70,229,.95) 0%, rgba(139,92,246,.95) 100%);">
+        <div class="hero-grid">
+          <div>
+            <h1>Vzdělání po studiu v Boru</h1>
+            <p>Když dokončíš výuční list nebo maturitu, můžeš pokračovat ve studiu nebo si doplnit kvalifikaci. Tady bude přehled možností – zatím lokálně a jednoduše.</p>
+            <ul class="checklist">
+              <li>Nástavbové studium (maturita)</li>
+              <li>Zkrácené studium / změna oboru</li>
+              <li>VOŠ a VŠ</li>
+              <li>Jazykové a odborné zkoušky</li>
+            </ul>
+            <div class="hero-actions">
+              <a class="btn btn--primary" href="#rozcesnik">Vybrat možnost</a>
+              <a class="btn btn--ghost" href="kurzy.html">Kurzy a rekvalifikace</a>
+            </div>
+          </div>
+          <div class="card" style="border-color: rgba(255,255,255,.25); background: rgba(255,255,255,.14); color: #fff;">
+            <h3 style="margin-top:0; color:#fff;">Rychlé tlačítko</h3>
+            <p style="margin: .35rem 0 0 0; color: rgba(255,255,255,.92)">Nejčastější pokračování po učňáku je nástavba (maturita). Kurzy a rekvalifikace jsou na samostatné stránce.</p>
+            <div style="margin-top:.9rem; display:flex; gap:.6rem; flex-wrap:wrap">
+              <a class="btn" href="#nastavba" style="border-color: rgba(255,255,255,.35); background: rgba(255,255,255,.10); color:#fff; box-shadow:none">Nástavba</a>
+              <a class="btn" href="#zkracene" style="border-color: rgba(255,255,255,.35); background: rgba(255,255,255,.10); color:#fff; box-shadow:none">Zkrácené</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="hledani">
+      <h2 class="section-title">Hledání škol a oborů</h2>
+      <p class="section-sub">Vyhledávání je lokální (bez online dotazů) – data se stáhnou denně při buildu.</p>
+
+      <div class="card" style="margin-top: 1rem">
+        <form data-role="skoly-form" class="grid" style="gap: .85rem">
+          <div class="field col-12">
+            <label class="field__label" for="skoly-q">Škola / obor</label>
+            <input id="skoly-q" class="input" data-role="skoly-q" placeholder="Např. nástavba, automechanik, svářeč, Plzeň…" autocomplete="off" />
+          </div>
+
+          <div class="field col-4">
+            <label class="field__label" for="skoly-kraj">Kraj</label>
+            <select id="skoly-kraj" class="select" data-role="skoly-kraj" aria-label="Kraj">
+              <option value="">Načítám…</option>
+            </select>
+          </div>
+
+          <div class="field col-4">
+            <label class="field__label" for="skoly-forma">Forma studia</label>
+            <select id="skoly-forma" class="select" data-role="skoly-forma" aria-label="Forma studia">
+              <option value="">Načítám…</option>
+            </select>
+          </div>
+
+          <div class="field col-4">
+            <label class="field__label" for="skoly-ukonceni">Ukončení</label>
+            <select id="skoly-ukonceni" class="select" data-role="skoly-ukonceni" aria-label="Ukončení studia">
+              <option value="">Načítám…</option>
+            </select>
+          </div>
+
+          <div class="col-12" style="display:flex; gap:.6rem; flex-wrap:wrap; align-items:center">
+            <button class="btn btn--primary" type="submit">Hledat</button>
+            <a class="btn btn--ghost" href="kurzy.html">Kurzy / rekvalifikace</a>
+            <div class="muted" data-role="skoly-status" style="margin-left:auto"></div>
+          </div>
+        </form>
+      </div>
+
+      <div data-role="skoly-results"></div>
+    </section>
+
+    <footer class="site-footer">
+      <div class="footer-grid">
+        <div>
+          <strong>SŠ Bor – poradci</strong>
+          <div class="muted">Vzdělání a další kroky po škole (lokální rozcestník).</div>
+        </div>
+        <div class="muted">Tip: až bude obsah hotový, můžeme to napojit na jednoduchý JSON v public/data.</div>
+      </div>
+    </footer>
+  </main>
+
+  <!-- Chatbot (funguje i zde – DATA je v jobs-demo.js) -->
+  <div id="chat-trigger">?</div>
+  <div id="chat-window">
+    <div class="chat-header">
+      <h3>Kariérový poradce</h3>
+      <p>Jak vám mohu pomoci?</p>
+    </div>
+    <div class="chat-messages" id="chat-messages"></div>
+    <div class="chat-input">
+      <input type="text" id="chat-input-field" placeholder="Napište svou zprávu...">
+      <button id="chat-send-btn">→</button>
+    </div>
+  </div>
+
+  <script src="jobs-demo.js"></script>
+  <script src="vzdelani.js"></script>
+  <script src="chatbot.js"></script>
+</body>
+</html>

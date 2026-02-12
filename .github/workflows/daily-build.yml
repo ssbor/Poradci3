@@ -1,8 +1,8 @@
-name: Monthly MPSV Data Build
+name: Daily Data Build
 
 on:
   schedule:
-    - cron: "7 3 1 * *"   # 03:07 UTC (~04/05:07 v ČR) každý 1. den v měsíci
+    - cron: "7 3 * * *"   # 03:07 UTC (~04/05:07 v ČR) každý den
   workflow_dispatch: {}
   push:
     branches: [ main ]
