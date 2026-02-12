@@ -164,16 +164,21 @@
       const right =
         pos === 'top'
           ? `
-        <div class="pager__right">
-          <span class="pager__label">Na stránce</span>
-          <select class="select" data-role="skoly-page-size" aria-label="Počet škol na stránce">
-            <option value="10">10</option>
-            <option value="20">20</option>
-            <option value="30" selected>30</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
-            <option value="all">Vše</option>
-          </select>
+        <div class="pager__right" style="align-items:flex-start">
+          <div style="display:flex; flex-direction:column; align-items:flex-end; gap:.35rem">
+            <div class="count-pill">Školy: <b data-role="skoly-count">–</b></div>
+            <div style="display:flex; align-items:center; gap:.5rem">
+              <span class="pager__label">Na stránce</span>
+              <select class="select" data-role="skoly-page-size" aria-label="Počet škol na stránce">
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="30" selected>30</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="all">Vše</option>
+              </select>
+            </div>
+          </div>
         </div>
       `
           : '';
@@ -365,11 +370,17 @@
       const to = from + safeSize;
       const pageHits = pageSizeRaw === 'all' ? hits : hits.slice(from, to);
 
+      // Update count pill (top pager)
+      outEl
+        .querySelectorAll('[data-role=skoly-count]')
+        .forEach((el) => (el.textContent = String(hits.length)));
+
       if (!hits.length) {
         statusEl.textContent = 'Nic nenalezeno. Zkuste kratší dotaz (např. „nástavba“, „svářeč“, „Plzeň“).';
         if (listEl) listEl.innerHTML = '';
       } else {
-        statusEl.textContent = `Nalezeno: ${hits.length} škol · Stránka ${state.page}/${totalPages} (zobrazuju ${pageHits.length}).`;
+        // Keep status line empty (requested); paging info is in pager.
+        statusEl.textContent = '';
         const html = pageHits
           .map((h) => createResultCard(h.s, h.programs.length ? h.programs : h.s.programs || []))
           .join('');
